@@ -171,10 +171,10 @@ describe('tableParser', () => {
       const result = parseHTMLTable(html);
       
       expect(result).toBeDefined();
-      expect(result!.headers).toEqual(['Col1', 'Col2', 'Col3']);
+      expect(result!.headers).toEqual(['Col1', 'Col2', 'Col3', 'Col4']);
       expect(result!.rows).toEqual([
-        ['Data 1', 'Data 2', ''],
-        ['Data 3', 'Data 4', 'Data 5']
+        ['Data 1', 'Data 2', '', ''],
+        ['Data 3', 'Data 4', 'Data 5', 'Data 6']
       ]);
     });
 

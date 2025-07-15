@@ -22,114 +22,249 @@ export class TaskRow extends LitElement {
   static styles = css`
     :host {
       display: block;
-      border-bottom: 1px solid #e5e7eb;
+      margin: var(--spacing-sm) var(--spacing-md);
+      border-radius: var(--radius-lg);
+      transition: all var(--transition-normal);
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+    
+    :host(:hover) {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--border-strong);
+    }
+    
+    :host(.completed) {
+      opacity: 0.7;
+      transform: none;
+    }
+    
+    :host(.completed:hover) {
+      transform: none;
+      box-shadow: var(--shadow-sm);
     }
 
     .task-row {
       display: grid;
       grid-template-columns: auto 1fr auto auto;
-      gap: 12px;
-      padding: 12px;
+      gap: var(--spacing-md);
+      padding: var(--spacing-lg);
       align-items: start;
     }
 
     .task-cells {
       display: grid;
-      gap: 8px;
-      grid-template-columns: repeat(var(--column-count, 1), minmax(100px, 1fr));
+      gap: var(--spacing-sm);
+      grid-template-columns: repeat(var(--column-count, 1), minmax(120px, 1fr));
     }
 
     .cell {
-      padding: 4px 8px;
-      border: 1px solid #d1d5db;
-      border-radius: 4px;
-      background: #f9fafb;
+      padding: var(--spacing-sm) var(--spacing-md);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
       font-size: 14px;
-      min-height: 20px;
+      min-height: 24px;
+      color: var(--text-primary);
+      line-height: 1.4;
+      transition: all var(--transition-fast);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .cell::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+    }
+    
+    .task-row:hover .cell::before {
+      opacity: 0.02;
+    }
+    
+    .cell:hover {
+      border-color: var(--primary-300);
+      background: var(--primary-50);
     }
 
     .checkbox {
       margin: 0;
       cursor: pointer;
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary-500);
+      border-radius: var(--radius-sm);
+      transition: all var(--transition-fast);
+    }
+    
+    .checkbox:hover {
+      transform: scale(1.1);
+    }
+    
+    .checkbox:checked {
+      background: var(--primary-500);
+      border-color: var(--primary-500);
     }
 
     .timer-controls {
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      min-width: 120px;
+      gap: var(--spacing-xs);
+      min-width: 140px;
     }
 
     .timer-display {
       font-family: 'Courier New', monospace;
-      font-size: 14px;
-      font-weight: bold;
+      font-size: 15px;
+      font-weight: 600;
       text-align: center;
-      padding: 4px;
-      background: #f3f4f6;
-      border-radius: 4px;
-      min-height: 20px;
+      padding: var(--spacing-sm);
+      background: linear-gradient(135deg, var(--gray-50), var(--gray-100));
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      min-height: 32px;
       display: flex;
       align-items: center;
       justify-content: center;
+      color: var(--text-primary);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .timer-display::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+    }
+    
+    .timer-display.running {
+      background: linear-gradient(135deg, var(--secondary-50), var(--secondary-100));
+      border-color: var(--secondary-300);
+      color: var(--secondary-700);
+    }
+    
+    .timer-display.running::before {
+      opacity: 0.1;
     }
 
     .timer-buttons {
       display: flex;
-      gap: 2px;
+      gap: var(--spacing-xs);
     }
 
     .timer-button {
       flex: 1;
-      padding: 4px 8px;
+      padding: var(--spacing-xs) var(--spacing-sm);
       font-size: 12px;
-      border: 1px solid #d1d5db;
-      border-radius: 4px;
-      background: white;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface-elevated);
       cursor: pointer;
-      transition: background-color 0.2s;
+      transition: all var(--transition-fast);
+      position: relative;
+      overflow: hidden;
+      color: var(--text-secondary);
+    }
+    
+    .timer-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.3s;
+    }
+    
+    .timer-button:hover::before {
+      left: 100%;
     }
 
     .timer-button:hover {
-      background: #f3f4f6;
+      background: var(--gray-100);
+      border-color: var(--border-strong);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
     }
 
     .timer-button.start {
-      background: #10b981;
+      background: linear-gradient(135deg, var(--secondary-500), var(--secondary-600));
       color: white;
-      border-color: #059669;
+      border-color: var(--secondary-600);
     }
 
     .timer-button.start:hover {
-      background: #059669;
+      background: linear-gradient(135deg, var(--secondary-600), var(--secondary-700));
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
     }
 
     .timer-button.stop {
-      background: #ef4444;
+      background: linear-gradient(135deg, var(--danger-500), var(--danger-600));
       color: white;
-      border-color: #dc2626;
+      border-color: var(--danger-600);
     }
 
     .timer-button.stop:hover {
-      background: #dc2626;
+      background: linear-gradient(135deg, var(--danger-600), var(--danger-700));
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
     }
 
     .notes {
       min-width: 200px;
       resize: vertical;
-      padding: 8px;
-      border: 1px solid #d1d5db;
-      border-radius: 4px;
+      padding: var(--spacing-sm) var(--spacing-md);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
       font-family: inherit;
       font-size: 14px;
+      background: var(--surface);
+      color: var(--text-primary);
+      transition: all var(--transition-fast);
+      line-height: 1.4;
     }
-
-    .task-row.completed {
-      opacity: 0.6;
+    
+    .notes:focus {
+      border-color: var(--primary-400);
+      background: var(--primary-50);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .notes::placeholder {
+      color: var(--text-tertiary);
     }
 
     .task-row.completed .cell {
       text-decoration: line-through;
+      color: var(--text-tertiary);
+      background: var(--gray-100);
+    }
+    
+    .task-row.completed .timer-display {
+      background: var(--gray-100);
+      color: var(--text-tertiary);
+    }
+    
+    .task-row.completed .notes {
+      background: var(--gray-100);
+      color: var(--text-tertiary);
     }
   `;
 
@@ -138,6 +273,11 @@ export class TaskRow extends LitElement {
     this.timerState.previousElapsed = this.task.elapsedMs;
     this.updateDisplayTime();
     this.setupIntersectionObserver();
+    
+    // Add completed class to host element
+    if (this.task.done) {
+      this.classList.add('completed');
+    }
   }
 
   disconnectedCallback() {
@@ -262,6 +402,13 @@ export class TaskRow extends LitElement {
   private onCheckboxChange(e: Event) {
     const checkbox = e.target as HTMLInputElement;
     this.updateTask({ done: checkbox.checked });
+    
+    // Update host element class
+    if (checkbox.checked) {
+      this.classList.add('completed');
+    } else {
+      this.classList.remove('completed');
+    }
   }
 
   private onNotesChange(e: Event) {
@@ -286,7 +433,7 @@ export class TaskRow extends LitElement {
           @change=${this.onCheckboxChange}
         />
         
-        <div class="task-cells" style="--column-count: ${this.task.cells.length}">
+        <div class="task-cells" style="--column-count: ${this.headers.length || this.task.cells.length}">
           ${this.task.cells.map((cell, index) => html`
             <div class="cell" title="${this.headers[index] || `Column ${index + 1}`}">
               ${cell}
@@ -295,7 +442,7 @@ export class TaskRow extends LitElement {
         </div>
         
         <div class="timer-controls">
-          <div class="timer-display">${this.displayTime}</div>
+          <div class="timer-display ${this.timerState.isRunning ? 'running' : ''}">${this.displayTime}</div>
           <div class="timer-buttons">
             ${this.timerState.isRunning ? html`
               <button class="timer-button stop" @click=${this.stopTimer}>Stop</button>

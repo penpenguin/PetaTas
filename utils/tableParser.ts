@@ -33,7 +33,7 @@ export function parseHTMLTable(htmlString: string): ParsedTable | null {
     return null;
   }
   
-  const headers: string[] = [];
+  let headers: string[] = [];
   const rows: string[][] = [];
   
   // Extract headers from thead or first row with th elements
@@ -74,12 +74,22 @@ export function parseHTMLTable(htmlString: string): ParsedTable | null {
     return null;
   }
   
+  // Ensure consistent column count between headers and data
+  const maxColumns = Math.max(...rows.map(row => row.length));
+  
   // If no headers were found, generate default ones
   if (headers.length === 0) {
-    const maxColumns = Math.max(...rows.map(row => row.length));
     for (let i = 0; i < maxColumns; i++) {
       headers.push(`Col${i + 1}`);
     }
+  } else {
+    // Normalize header count to match maximum data columns
+    const normalizedHeaders = [...headers];
+    while (normalizedHeaders.length < maxColumns) {
+      normalizedHeaders.push(`Col${normalizedHeaders.length + 1}`);
+    }
+    // Truncate headers if they exceed max columns
+    headers = normalizedHeaders.slice(0, maxColumns);
   }
   
   // Normalize row lengths to match header count
@@ -90,6 +100,17 @@ export function parseHTMLTable(htmlString: string): ParsedTable | null {
     }
     return normalizedRow.slice(0, headers.length);
   });
+  
+  // Validate consistency
+  if (headers.length !== maxColumns) {
+    console.warn('Header count mismatch:', headers.length, 'vs', maxColumns);
+  }
+  
+  // Ensure all rows have the same length as headers
+  const inconsistentRows = normalizedRows.filter(row => row.length !== headers.length);
+  if (inconsistentRows.length > 0) {
+    console.warn('Found rows with inconsistent column count:', inconsistentRows.length);
+  }
   
   return {
     headers,

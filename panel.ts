@@ -30,63 +30,150 @@ export class MainPanel extends LitElement {
     }
 
     .header {
-      padding: 16px;
-      border-bottom: 2px solid #e5e7eb;
-      background: #f9fafb;
+      padding: var(--spacing-xl) var(--spacing-lg);
+      border-bottom: 2px solid var(--border-strong);
+      background: linear-gradient(135deg, var(--primary-50), var(--primary-100));
       flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+      opacity: 0.03;
+      pointer-events: none;
     }
 
     .header h1 {
-      margin: 0 0 12px 0;
-      font-size: 20px;
-      font-weight: bold;
-      color: #1f2937;
+      margin: 0 0 var(--spacing-md) 0;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--primary-800);
+      background: linear-gradient(135deg, var(--primary-600), var(--primary-800));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .header-actions {
       display: flex;
-      gap: 8px;
+      gap: var(--spacing-sm);
       align-items: center;
+      flex-wrap: wrap;
     }
 
     .export-button {
-      padding: 8px 16px;
-      background: #3b82f6;
+      padding: var(--spacing-sm) var(--spacing-lg);
+      background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
       color: white;
-      border: none;
-      border-radius: 6px;
+      border: 1px solid var(--primary-600);
+      border-radius: var(--radius-md);
       cursor: pointer;
       font-size: 14px;
-      transition: background-color 0.2s;
+      font-weight: 500;
+      transition: all var(--transition-normal);
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .export-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
+    }
+    
+    .export-button:hover::before {
+      left: 100%;
     }
 
     .export-button:hover {
-      background: #2563eb;
+      background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
     }
 
     .export-button:disabled {
-      background: #9ca3af;
+      background: var(--gray-400);
       cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+      opacity: 0.5;
+    }
+    
+    .export-button:disabled::before {
+      display: none;
     }
 
     .clear-button {
-      padding: 8px 16px;
-      background: #ef4444;
+      padding: var(--spacing-sm) var(--spacing-lg);
+      background: linear-gradient(135deg, var(--danger-500), var(--danger-600));
       color: white;
-      border: none;
-      border-radius: 6px;
+      border: 1px solid var(--danger-600);
+      border-radius: var(--radius-md);
       cursor: pointer;
       font-size: 14px;
-      transition: background-color 0.2s;
+      font-weight: 500;
+      transition: all var(--transition-normal);
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .clear-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
+    }
+    
+    .clear-button:hover::before {
+      left: 100%;
     }
 
     .clear-button:hover {
-      background: #dc2626;
+      background: linear-gradient(135deg, var(--danger-600), var(--danger-700));
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .clear-button:disabled {
+      background: var(--gray-400);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+      opacity: 0.5;
+    }
+    
+    .clear-button:disabled::before {
+      display: none;
     }
 
     .task-count {
       font-size: 14px;
-      color: #6b7280;
+      color: var(--text-secondary);
+      font-weight: 500;
+      padding: var(--spacing-xs) var(--spacing-sm);
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: var(--radius-full);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(8px);
     }
 
     .content {
@@ -101,36 +188,43 @@ export class MainPanel extends LitElement {
       align-items: center;
       justify-content: center;
       height: 100%;
-      padding: 32px;
+      padding: var(--spacing-2xl);
       text-align: center;
-      color: #6b7280;
+      color: var(--text-secondary);
+      background: radial-gradient(circle at center, rgba(59, 130, 246, 0.05), transparent);
     }
 
     .empty-state h2 {
-      margin: 0 0 8px 0;
-      font-size: 18px;
-      color: #4b5563;
+      margin: 0 0 var(--spacing-sm) 0;
+      font-size: 20px;
+      color: var(--text-primary);
+      font-weight: 600;
     }
 
     .empty-state p {
       margin: 0;
-      font-size: 14px;
-      line-height: 1.5;
+      font-size: 15px;
+      line-height: 1.6;
+      max-width: 300px;
+      color: var(--text-secondary);
     }
 
     .toast {
       position: fixed;
-      top: 16px;
-      right: 16px;
-      background: #10b981;
+      top: var(--spacing-lg);
+      right: var(--spacing-lg);
+      background: linear-gradient(135deg, var(--secondary-500), var(--secondary-600));
       color: white;
-      padding: 12px 16px;
-      border-radius: 6px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      padding: var(--spacing-md) var(--spacing-lg);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
       transform: translateX(100%);
       opacity: 0;
-      transition: all 0.3s ease;
+      transition: all var(--transition-slow) ease;
       z-index: 1000;
+      font-weight: 500;
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .toast.show {
@@ -143,16 +237,17 @@ export class MainPanel extends LitElement {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(59, 130, 246, 0.1);
-      border: 2px dashed #3b82f6;
-      border-radius: 8px;
-      padding: 24px;
-      color: #3b82f6;
+      background: rgba(59, 130, 246, 0.05);
+      border: 2px dashed var(--primary-400);
+      border-radius: var(--radius-xl);
+      padding: var(--spacing-2xl);
+      color: var(--primary-600);
       font-size: 16px;
-      font-weight: bold;
+      font-weight: 600;
       pointer-events: none;
       opacity: 0;
-      transition: opacity 0.2s;
+      transition: opacity var(--transition-normal);
+      backdrop-filter: blur(4px);
     }
 
     .paste-hint.show {
@@ -162,13 +257,17 @@ export class MainPanel extends LitElement {
     .headers-row {
       display: grid;
       grid-template-columns: auto 1fr auto auto;
-      gap: 12px;
-      padding: 12px;
-      background: #f3f4f6;
-      border-bottom: 2px solid #e5e7eb;
-      font-weight: bold;
+      gap: var(--spacing-md);
+      padding: var(--spacing-md);
+      background: linear-gradient(135deg, var(--gray-50), var(--gray-100));
+      border-bottom: 2px solid var(--border-strong);
+      font-weight: 600;
       font-size: 14px;
-      color: #374151;
+      color: var(--text-primary);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(8px);
     }
 
     .headers-cells {
@@ -178,7 +277,12 @@ export class MainPanel extends LitElement {
     }
 
     .header-cell {
-      padding: 4px 8px;
+      padding: var(--spacing-xs) var(--spacing-sm);
+      color: var(--text-secondary);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 12px;
     }
   `;
 
