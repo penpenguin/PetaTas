@@ -1,0 +1,41 @@
+{
+  "name": "petatas",
+  "version": "1.0.0",
+  "description": "Chrome extension for table-based task management with timers",
+  "main": "dist/panel.js",
+  "scripts": {
+    "build": "node build.js",
+    "build:prod": "node build.js --prod",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint *.ts utils/*.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "lit": "^3.1.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.254",
+    "@types/jest": "^29.5.8",
+    "@typescript-eslint/eslint-plugin": "^6.12.0",
+    "@typescript-eslint/parser": "^6.12.0",
+    "esbuild": "^0.19.8",
+    "eslint": "^8.54.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.3.2"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "jsdom",
+    "testMatch": ["**/*.test.ts"],
+    "collectCoverageFrom": [
+      "src/**/*.ts",
+      "!src/**/*.test.ts"
+    ]
+  },
+  "keywords": ["chrome-extension", "task-management", "table", "timer"],
+  "author": "penpenguin",
+  "license": "MIT"
+}

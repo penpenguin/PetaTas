@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "PetaTas",
+  "version": "1.0.0",
+  "description": "Table-based task management with timers and markdown export",
+  "permissions": [
+    "storage",
+    "sidePanel"
+  ],
+  "action": {
+    "default_title": "Open PetaTas"
+  },
+  "side_panel": {
+    "default_path": "panel.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  },
+}
