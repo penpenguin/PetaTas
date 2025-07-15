@@ -1,12 +1,11 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { state } from 'lit/decorators.js';
 import { Task, isValidTask } from './types.js';
 import { parseHTMLTable, isHTMLTable } from './utils/tableParser.js';
 import { generateMarkdownTable, copyMarkdownToClipboard } from './utils/markdown.js';
 import './task-row.js';
 import { TaskRow } from './task-row.js';
 
-@customElement('main-panel')
 export class MainPanel extends LitElement {
   @state() private tasks: Task[] = [];
   @state() private headers: string[] = [];
@@ -175,7 +174,7 @@ export class MainPanel extends LitElement {
     .headers-cells {
       display: grid;
       gap: 8px;
-      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      grid-template-columns: repeat(var(--column-count, 1), minmax(100px, 1fr));
     }
 
     .header-cell {
@@ -466,7 +465,7 @@ export class MainPanel extends LitElement {
             ${this.headers.length > 0 ? html`
               <div class="headers-row">
                 <div class="header-cell">Done</div>
-                <div class="headers-cells">
+                <div class="headers-cells" style="--column-count: ${this.headers.length}">
                   ${this.headers.map(header => html`
                     <div class="header-cell">${header}</div>
                   `)}
@@ -491,4 +490,9 @@ export class MainPanel extends LitElement {
       </div>
     `;
   }
+}
+
+// Only register the custom element if it hasn't been registered already
+if (!customElements.get('main-panel')) {
+  customElements.define('main-panel', MainPanel);
 }

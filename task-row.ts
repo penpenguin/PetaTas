@@ -1,9 +1,8 @@
 import { LitElement, html, css, PropertyValues } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { property, state } from 'lit/decorators.js';
 import { Task, TimerState } from './types.js';
 import { formatTime } from './utils/markdown.js';
 
-@customElement('task-row')
 export class TaskRow extends LitElement {
   @property({ type: Object }) task!: Task;
   @property({ type: Array }) headers: string[] = [];
@@ -37,7 +36,7 @@ export class TaskRow extends LitElement {
     .task-cells {
       display: grid;
       gap: 8px;
-      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      grid-template-columns: repeat(var(--column-count, 1), minmax(100px, 1fr));
     }
 
     .cell {
@@ -287,7 +286,7 @@ export class TaskRow extends LitElement {
           @change=${this.onCheckboxChange}
         />
         
-        <div class="task-cells">
+        <div class="task-cells" style="--column-count: ${this.task.cells.length}">
           ${this.task.cells.map((cell, index) => html`
             <div class="cell" title="${this.headers[index] || `Column ${index + 1}`}">
               ${cell}
@@ -318,4 +317,9 @@ export class TaskRow extends LitElement {
       </div>
     `;
   }
+}
+
+// Only register the custom element if it hasn't been registered already
+if (!customElements.get('task-row')) {
+  customElements.define('task-row', TaskRow);
 }
