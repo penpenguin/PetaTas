@@ -11,6 +11,14 @@ export class MainPanel extends LitElement {
   @state() private headers: string[] = [];
   @state() private toastMessage: string = '';
   @state() private showToast: boolean = false;
+  @state() private showConfirmDialog: boolean = false;
+  @state() private confirmDialogConfig: {
+    title: string;
+    message: string;
+    confirmText: string;
+    cancelText: string;
+    onConfirm: () => void;
+  } | null = null;
 
   private port: chrome.runtime.Port | null = null;
   private saveTimeout: number | null = null;
@@ -284,6 +292,127 @@ export class MainPanel extends LitElement {
       letter-spacing: 0.05em;
       font-size: 12px;
     }
+
+    .dialog-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      opacity: 0;
+      backdrop-filter: blur(4px);
+      transition: opacity var(--transition-normal);
+    }
+
+    .dialog-overlay.show {
+      opacity: 1;
+    }
+
+    .dialog {
+      background: var(--surface-elevated);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-xl);
+      max-width: 480px;
+      width: 90%;
+      margin: var(--spacing-lg);
+      transform: scale(0.95) translateY(10px);
+      transition: transform var(--transition-normal);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .dialog-overlay.show .dialog {
+      transform: scale(1) translateY(0);
+    }
+
+    .dialog-header {
+      padding: var(--spacing-xl) var(--spacing-xl) var(--spacing-lg);
+      background: linear-gradient(135deg, var(--primary-50), var(--primary-100));
+      border-bottom: 1px solid var(--border);
+    }
+
+    .dialog-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--primary-800);
+      line-height: 1.3;
+    }
+
+    .dialog-content {
+      padding: var(--spacing-lg) var(--spacing-xl);
+    }
+
+    .dialog-message {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.5;
+      color: var(--text-primary);
+    }
+
+    .dialog-actions {
+      padding: var(--spacing-lg) var(--spacing-xl) var(--spacing-xl);
+      display: flex;
+      gap: var(--spacing-md);
+      justify-content: flex-end;
+    }
+
+    .dialog-button {
+      padding: var(--spacing-sm) var(--spacing-lg);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      border: 1px solid;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .dialog-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.3s;
+    }
+
+    .dialog-button:hover::before {
+      left: 100%;
+    }
+
+    .dialog-button.cancel {
+      background: var(--surface);
+      color: var(--text-secondary);
+      border-color: var(--border);
+    }
+
+    .dialog-button.cancel:hover {
+      background: var(--gray-100);
+      border-color: var(--border-strong);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .dialog-button.confirm {
+      background: linear-gradient(135deg, var(--danger-500), var(--danger-600));
+      color: white;
+      border-color: var(--danger-600);
+    }
+
+    .dialog-button.confirm:hover {
+      background: linear-gradient(135deg, var(--danger-600), var(--danger-700));
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
   `;
 
   connectedCallback() {
@@ -400,6 +529,22 @@ export class MainPanel extends LitElement {
       return;
     }
 
+    // Check if tasks already exist and show confirmation dialog
+    if (this.tasks.length > 0) {
+      this.showConfirmationDialog({
+        title: 'Replace Existing Tasks?',
+        message: `You currently have ${this.tasks.length} task${this.tasks.length === 1 ? '' : 's'}. Pasting will replace all existing tasks with ${parsed.rows.length} new task${parsed.rows.length === 1 ? '' : 's'} from the clipboard. This action cannot be undone.`,
+        confirmText: 'Replace Tasks',
+        cancelText: 'Cancel',
+        onConfirm: () => this.processPasteData(parsed)
+      });
+    } else {
+      // No existing tasks, proceed directly
+      await this.processPasteData(parsed);
+    }
+  };
+
+  private async processPasteData(parsed: { rows: string[][], headers: string[] }) {
     // Stop all running timers before adding new tasks
     await this.stopAllTimers();
 
@@ -419,7 +564,7 @@ export class MainPanel extends LitElement {
     await this.saveTasks();
     
     this.showToastMessage(`Added ${newTasks.length} tasks from table`);
-  };
+  }
 
   private handleTaskUpdate = (e: Event) => {
     const customEvent = e as CustomEvent;
@@ -528,6 +673,33 @@ export class MainPanel extends LitElement {
     }, 3000);
   }
 
+  private showConfirmationDialog(config: {
+    title: string;
+    message: string;
+    confirmText: string;
+    cancelText: string;
+    onConfirm: () => void;
+  }) {
+    this.confirmDialogConfig = config;
+    this.showConfirmDialog = true;
+  }
+
+  private hideConfirmationDialog() {
+    this.showConfirmDialog = false;
+    this.confirmDialogConfig = null;
+  }
+
+  private handleDialogConfirm() {
+    if (this.confirmDialogConfig?.onConfirm) {
+      this.confirmDialogConfig.onConfirm();
+    }
+    this.hideConfirmationDialog();
+  }
+
+  private handleDialogCancel() {
+    this.hideConfirmationDialog();
+  }
+
   render() {
     const completedCount = this.tasks.filter(t => t.done).length;
     
@@ -592,6 +764,27 @@ export class MainPanel extends LitElement {
       <div class="toast ${this.showToast ? 'show' : ''}">
         ${this.toastMessage}
       </div>
+
+      ${this.showConfirmDialog && this.confirmDialogConfig ? html`
+        <div class="dialog-overlay ${this.showConfirmDialog ? 'show' : ''}" @click=${this.handleDialogCancel}>
+          <div class="dialog" @click=${(e: Event) => e.stopPropagation()}>
+            <div class="dialog-header">
+              <h3 class="dialog-title">${this.confirmDialogConfig.title}</h3>
+            </div>
+            <div class="dialog-content">
+              <p class="dialog-message">${this.confirmDialogConfig.message}</p>
+            </div>
+            <div class="dialog-actions">
+              <button class="dialog-button cancel" @click=${this.handleDialogCancel}>
+                ${this.confirmDialogConfig.cancelText}
+              </button>
+              <button class="dialog-button confirm" @click=${this.handleDialogConfirm}>
+                ${this.confirmDialogConfig.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      ` : ''}
     `;
   }
 }
