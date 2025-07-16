@@ -14,6 +14,8 @@ export class TaskRow extends LitElement {
   };
 
   @state() private displayTime: string = '0:00';
+  @state() private isEditing: boolean = false;
+  @state() private editValue: string = '';
 
   private animationId: number = 0;
   private intersectionObserver: IntersectionObserver | null = null;
@@ -161,6 +163,45 @@ export class TaskRow extends LitElement {
       opacity: 0.1;
     }
 
+    .timer-input {
+      font-family: 'Courier New', monospace;
+      font-size: 15px;
+      font-weight: 600;
+      text-align: center;
+      padding: var(--spacing-sm);
+      background: linear-gradient(135deg, var(--primary-50), var(--primary-100));
+      border: 2px solid var(--primary-300);
+      border-radius: var(--radius-md);
+      min-height: 32px;
+      color: var(--text-primary);
+      outline: none;
+      transition: all var(--transition-fast);
+      box-sizing: border-box;
+    }
+
+    .timer-input:focus {
+      border-color: var(--primary-500);
+      background: linear-gradient(135deg, var(--primary-100), var(--primary-200));
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .timer-input.invalid {
+      border-color: var(--danger-500);
+      background: linear-gradient(135deg, var(--danger-50), var(--danger-100));
+      animation: shake 0.3s ease-in-out;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-3px); }
+      75% { transform: translateX(3px); }
+    }
+
+    .timer-input::placeholder {
+      color: var(--text-tertiary);
+      font-size: 13px;
+    }
+
     .timer-buttons {
       display: flex;
       gap: var(--spacing-xs);
@@ -301,6 +342,40 @@ export class TaskRow extends LitElement {
     this.displayTime = formatTime(currentElapsed);
   }
 
+  private parseTimeInput(input: string): number | null {
+    if (!input.trim()) return 0;
+    
+    const timeStr = input.trim();
+    const parts = timeStr.split(':').map(part => part.trim());
+    
+    if (parts.length === 2) {
+      // M:SS format
+      const minutes = parseInt(parts[0] || '0', 10);
+      const seconds = parseInt(parts[1] || '0', 10);
+      
+      if (isNaN(minutes) || isNaN(seconds) || minutes < 0 || seconds < 0 || seconds >= 60) {
+        return null;
+      }
+      
+      return (minutes * 60 + seconds) * 1000;
+    } else if (parts.length === 3) {
+      // H:MM:SS format
+      const hours = parseInt(parts[0] || '0', 10);
+      const minutes = parseInt(parts[1] || '0', 10);
+      const seconds = parseInt(parts[2] || '0', 10);
+      
+      if (isNaN(hours) || isNaN(minutes) || isNaN(seconds) || 
+          hours < 0 || minutes < 0 || seconds < 0 || 
+          minutes >= 60 || seconds >= 60) {
+        return null;
+      }
+      
+      return (hours * 3600 + minutes * 60 + seconds) * 1000;
+    }
+    
+    return null;
+  }
+
   private startTimer() {
     if (this.timerState.isRunning) return;
 
@@ -347,6 +422,72 @@ export class TaskRow extends LitElement {
 
     this.updateDisplayTime();
     this.updateTask({ elapsedMs: 0 });
+  }
+
+  private startEdit() {
+    if (this.timerState.isRunning) {
+      this.stopTimer();
+    }
+    
+    this.isEditing = true;
+    this.editValue = this.displayTime;
+    
+    // Focus the input after render
+    this.updateComplete.then(() => {
+      const input = this.shadowRoot?.querySelector('.timer-input') as HTMLInputElement;
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    });
+  }
+
+  private cancelEdit() {
+    this.isEditing = false;
+    this.editValue = '';
+  }
+
+  private saveEdit() {
+    const parsedMs = this.parseTimeInput(this.editValue);
+    
+    if (parsedMs === null) {
+      // Invalid input - show feedback and stay in edit mode
+      const input = this.shadowRoot?.querySelector('.timer-input') as HTMLInputElement;
+      if (input) {
+        input.classList.add('invalid');
+        setTimeout(() => input.classList.remove('invalid'), 500);
+      }
+      return;
+    }
+
+    this.timerState = {
+      isRunning: false,
+      startTime: 0,
+      previousElapsed: parsedMs
+    };
+
+    this.updateDisplayTime();
+    this.updateTask({ elapsedMs: parsedMs });
+    this.isEditing = false;
+    this.editValue = '';
+  }
+
+  private onEditKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      this.saveEdit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      this.cancelEdit();
+    }
+  }
+
+  private onEditInput(e: Event) {
+    const input = e.target as HTMLInputElement;
+    this.editValue = input.value;
+    
+    // Remove invalid class when user starts typing
+    input.classList.remove('invalid');
   }
 
   private animateTimer = () => {
@@ -442,14 +583,34 @@ export class TaskRow extends LitElement {
         </div>
         
         <div class="timer-controls">
-          <div class="timer-display ${this.timerState.isRunning ? 'running' : ''}">${this.displayTime}</div>
+          ${this.isEditing ? html`
+            <input
+              class="timer-input"
+              type="text"
+              .value=${this.editValue}
+              placeholder="1:30:45 or 30:45"
+              @input=${this.onEditInput}
+              @keydown=${this.onEditKeyDown}
+              @blur=${this.saveEdit}
+            />
+          ` : html`
+            <div class="timer-display ${this.timerState.isRunning ? 'running' : ''}" @click=${this.startEdit}>
+              ${this.displayTime}
+            </div>
+          `}
           <div class="timer-buttons">
-            ${this.timerState.isRunning ? html`
-              <button class="timer-button stop" @click=${this.stopTimer}>Stop</button>
+            ${this.isEditing ? html`
+              <button class="timer-button" @click=${this.saveEdit}>Save</button>
+              <button class="timer-button" @click=${this.cancelEdit}>Cancel</button>
             ` : html`
-              <button class="timer-button start" @click=${this.startTimer}>Start</button>
+              ${this.timerState.isRunning ? html`
+                <button class="timer-button stop" @click=${this.stopTimer}>Stop</button>
+              ` : html`
+                <button class="timer-button start" @click=${this.startTimer}>Start</button>
+              `}
+              <button class="timer-button" @click=${this.resetTimer}>Reset</button>
+              <button class="timer-button" @click=${this.startEdit}>Edit</button>
             `}
-            <button class="timer-button" @click=${this.resetTimer}>Reset</button>
           </div>
         </div>
         
