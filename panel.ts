@@ -30,389 +30,6 @@ export class MainPanel extends LitElement {
       height: 100vh;
       overflow: hidden;
     }
-
-    .panel-container {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-    }
-
-    .header {
-      padding: var(--spacing-xl) var(--spacing-lg);
-      border-bottom: 2px solid var(--border-strong);
-      background: linear-gradient(135deg, var(--primary-50), var(--primary-100));
-      flex-shrink: 0;
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .header::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
-      opacity: 0.03;
-      pointer-events: none;
-    }
-
-    .header h1 {
-      margin: 0 0 var(--spacing-md) 0;
-      font-size: 24px;
-      font-weight: 700;
-      color: var(--primary-800);
-      background: linear-gradient(135deg, var(--primary-600), var(--primary-800));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .header-actions {
-      display: flex;
-      gap: var(--spacing-sm);
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .export-button {
-      padding: var(--spacing-sm) var(--spacing-lg);
-      background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
-      color: white;
-      border: 1px solid var(--primary-600);
-      border-radius: var(--radius-md);
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
-      transition: all var(--transition-normal);
-      position: relative;
-      overflow: hidden;
-      box-shadow: var(--shadow-sm);
-    }
-    
-    .export-button::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-      transition: left 0.5s;
-    }
-    
-    .export-button:hover::before {
-      left: 100%;
-    }
-
-    .export-button:hover {
-      background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-md);
-    }
-
-    .export-button:disabled {
-      background: var(--gray-400);
-      cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
-      opacity: 0.5;
-    }
-    
-    .export-button:disabled::before {
-      display: none;
-    }
-
-    .clear-button {
-      padding: var(--spacing-sm) var(--spacing-lg);
-      background: linear-gradient(135deg, var(--danger-500), var(--danger-600));
-      color: white;
-      border: 1px solid var(--danger-600);
-      border-radius: var(--radius-md);
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
-      transition: all var(--transition-normal);
-      position: relative;
-      overflow: hidden;
-      box-shadow: var(--shadow-sm);
-    }
-    
-    .clear-button::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-      transition: left 0.5s;
-    }
-    
-    .clear-button:hover::before {
-      left: 100%;
-    }
-
-    .clear-button:hover {
-      background: linear-gradient(135deg, var(--danger-600), var(--danger-700));
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-md);
-    }
-    
-    .clear-button:disabled {
-      background: var(--gray-400);
-      cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
-      opacity: 0.5;
-    }
-    
-    .clear-button:disabled::before {
-      display: none;
-    }
-
-    .task-count {
-      font-size: 14px;
-      color: var(--text-secondary);
-      font-weight: 500;
-      padding: var(--spacing-xs) var(--spacing-sm);
-      background: rgba(255, 255, 255, 0.8);
-      border-radius: var(--radius-full);
-      border: 1px solid var(--border);
-      backdrop-filter: blur(8px);
-    }
-
-    .content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 0;
-    }
-
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      padding: var(--spacing-2xl);
-      text-align: center;
-      color: var(--text-secondary);
-      background: radial-gradient(circle at center, rgba(59, 130, 246, 0.05), transparent);
-    }
-
-    .empty-state h2 {
-      margin: 0 0 var(--spacing-sm) 0;
-      font-size: 20px;
-      color: var(--text-primary);
-      font-weight: 600;
-    }
-
-    .empty-state p {
-      margin: 0;
-      font-size: 15px;
-      line-height: 1.6;
-      max-width: 300px;
-      color: var(--text-secondary);
-    }
-
-    .toast {
-      position: fixed;
-      top: var(--spacing-lg);
-      right: var(--spacing-lg);
-      background: linear-gradient(135deg, var(--secondary-500), var(--secondary-600));
-      color: white;
-      padding: var(--spacing-md) var(--spacing-lg);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-lg);
-      transform: translateX(100%);
-      opacity: 0;
-      transition: all var(--transition-slow) ease;
-      z-index: 1000;
-      font-weight: 500;
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .toast.show {
-      transform: translateX(0);
-      opacity: 1;
-    }
-
-    .paste-hint {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(59, 130, 246, 0.05);
-      border: 2px dashed var(--primary-400);
-      border-radius: var(--radius-xl);
-      padding: var(--spacing-2xl);
-      color: var(--primary-600);
-      font-size: 16px;
-      font-weight: 600;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity var(--transition-normal);
-      backdrop-filter: blur(4px);
-    }
-
-    .paste-hint.show {
-      opacity: 1;
-    }
-
-    .headers-row {
-      display: grid;
-      grid-template-columns: auto 1fr auto auto;
-      gap: var(--spacing-md);
-      padding: var(--spacing-md);
-      background: linear-gradient(135deg, var(--gray-50), var(--gray-100));
-      border-bottom: 2px solid var(--border-strong);
-      font-weight: 600;
-      font-size: 14px;
-      color: var(--text-primary);
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      backdrop-filter: blur(8px);
-    }
-
-    .headers-cells {
-      display: grid;
-      gap: 8px;
-      grid-template-columns: repeat(var(--column-count, 1), minmax(100px, 1fr));
-    }
-
-    .header-cell {
-      padding: var(--spacing-xs) var(--spacing-sm);
-      color: var(--text-secondary);
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-size: 12px;
-    }
-
-    .dialog-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 2000;
-      opacity: 0;
-      backdrop-filter: blur(4px);
-      transition: opacity var(--transition-normal);
-    }
-
-    .dialog-overlay.show {
-      opacity: 1;
-    }
-
-    .dialog {
-      background: var(--surface-elevated);
-      border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-xl);
-      max-width: 480px;
-      width: 90%;
-      margin: var(--spacing-lg);
-      transform: scale(0.95) translateY(10px);
-      transition: transform var(--transition-normal);
-      border: 1px solid var(--border);
-      overflow: hidden;
-    }
-
-    .dialog-overlay.show .dialog {
-      transform: scale(1) translateY(0);
-    }
-
-    .dialog-header {
-      padding: var(--spacing-xl) var(--spacing-xl) var(--spacing-lg);
-      background: linear-gradient(135deg, var(--primary-50), var(--primary-100));
-      border-bottom: 1px solid var(--border);
-    }
-
-    .dialog-title {
-      margin: 0;
-      font-size: 18px;
-      font-weight: 600;
-      color: var(--primary-800);
-      line-height: 1.3;
-    }
-
-    .dialog-content {
-      padding: var(--spacing-lg) var(--spacing-xl);
-    }
-
-    .dialog-message {
-      margin: 0;
-      font-size: 15px;
-      line-height: 1.5;
-      color: var(--text-primary);
-    }
-
-    .dialog-actions {
-      padding: var(--spacing-lg) var(--spacing-xl) var(--spacing-xl);
-      display: flex;
-      gap: var(--spacing-md);
-      justify-content: flex-end;
-    }
-
-    .dialog-button {
-      padding: var(--spacing-sm) var(--spacing-lg);
-      border-radius: var(--radius-md);
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all var(--transition-fast);
-      border: 1px solid;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .dialog-button::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-      transition: left 0.3s;
-    }
-
-    .dialog-button:hover::before {
-      left: 100%;
-    }
-
-    .dialog-button.cancel {
-      background: var(--surface);
-      color: var(--text-secondary);
-      border-color: var(--border);
-    }
-
-    .dialog-button.cancel:hover {
-      background: var(--gray-100);
-      border-color: var(--border-strong);
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-sm);
-    }
-
-    .dialog-button.confirm {
-      background: linear-gradient(135deg, var(--danger-500), var(--danger-600));
-      color: white;
-      border-color: var(--danger-600);
-    }
-
-    .dialog-button.confirm:hover {
-      background: linear-gradient(135deg, var(--danger-600), var(--danger-700));
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-md);
-    }
   `;
 
   connectedCallback() {
@@ -704,50 +321,58 @@ export class MainPanel extends LitElement {
     const completedCount = this.tasks.filter(t => t.done).length;
     
     return html`
-      <div class="panel-container">
-        <div class="header">
-          <h1>PetaTas</h1>
-          <div class="header-actions">
-            <span class="task-count">
-              ${this.tasks.length} tasks (${completedCount} completed)
-            </span>
-            <button 
-              class="export-button" 
-              @click=${this.exportToMarkdown}
-              ?disabled=${this.tasks.length === 0}
-            >
-              Export Markdown
-            </button>
-            <button 
-              class="clear-button" 
-              @click=${this.clearAllTasks}
-              ?disabled=${this.tasks.length === 0}
-            >
-              Clear All
-            </button>
+      <div class="flex flex-col h-full">
+        <div class="navbar bg-base-200 border-b-2 border-base-300 flex-shrink-0">
+          <div class="navbar-start">
+            <h1 class="text-xl font-bold text-primary">PetaTas</h1>
+          </div>
+          <div class="navbar-end">
+            <div class="flex items-center gap-2">
+              <div class="badge badge-outline">
+                ${this.tasks.length} tasks (${completedCount} completed)
+              </div>
+              <button 
+                class="btn btn-primary btn-sm" 
+                @click=${this.exportToMarkdown}
+                ?disabled=${this.tasks.length === 0}
+              >
+                Export Markdown
+              </button>
+              <button 
+                class="btn btn-error btn-sm" 
+                @click=${this.clearAllTasks}
+                ?disabled=${this.tasks.length === 0}
+              >
+                Clear All
+              </button>
+            </div>
           </div>
         </div>
 
-        <div class="content">
+        <div class="flex-1 overflow-y-auto">
           ${this.tasks.length === 0 ? html`
-            <div class="empty-state">
-              <h2>No tasks yet</h2>
-              <p>
-                Copy a table from any application and paste it here<br>
-                to convert it into a task list with timers.
-              </p>
+            <div class="hero min-h-full">
+              <div class="hero-content text-center">
+                <div class="max-w-md">
+                  <h2 class="text-2xl font-bold">No tasks yet</h2>
+                  <p class="py-6">
+                    Copy a table from any application and paste it here<br>
+                    to convert it into a task list with timers.
+                  </p>
+                </div>
+              </div>
             </div>
           ` : html`
             ${this.headers.length > 0 ? html`
-              <div class="headers-row">
-                <div class="header-cell">Done</div>
-                <div class="headers-cells" style="--column-count: ${this.headers.length}">
+              <div class="grid grid-cols-[auto_1fr_auto_auto] gap-4 p-4 bg-base-200 border-b-2 border-base-300 font-semibold text-sm sticky top-0 z-10">
+                <div class="text-base-content/70 uppercase tracking-wider">Done</div>
+                <div class="grid gap-2" style="grid-template-columns: repeat(${this.headers.length}, minmax(100px, 1fr))">
                   ${this.headers.map(header => html`
-                    <div class="header-cell">${header}</div>
+                    <div class="text-base-content/70 uppercase tracking-wider">${header}</div>
                   `)}
                 </div>
-                <div class="header-cell">Timer</div>
-                <div class="header-cell">Notes</div>
+                <div class="text-base-content/70 uppercase tracking-wider">Timer</div>
+                <div class="text-base-content/70 uppercase tracking-wider">Notes</div>
               </div>
             ` : ''}
             
@@ -761,24 +386,22 @@ export class MainPanel extends LitElement {
         </div>
       </div>
 
-      <div class="toast ${this.showToast ? 'show' : ''}">
-        ${this.toastMessage}
+      <div class="toast toast-end ${this.showToast ? 'toast-start' : ''}">
+        <div class="alert alert-success">
+          <span>${this.toastMessage}</span>
+        </div>
       </div>
 
       ${this.showConfirmDialog && this.confirmDialogConfig ? html`
-        <div class="dialog-overlay ${this.showConfirmDialog ? 'show' : ''}" @click=${this.handleDialogCancel}>
-          <div class="dialog" @click=${(e: Event) => e.stopPropagation()}>
-            <div class="dialog-header">
-              <h3 class="dialog-title">${this.confirmDialogConfig.title}</h3>
-            </div>
-            <div class="dialog-content">
-              <p class="dialog-message">${this.confirmDialogConfig.message}</p>
-            </div>
-            <div class="dialog-actions">
-              <button class="dialog-button cancel" @click=${this.handleDialogCancel}>
+        <div class="modal modal-open">
+          <div class="modal-box">
+            <h3 class="font-bold text-lg">${this.confirmDialogConfig.title}</h3>
+            <p class="py-4">${this.confirmDialogConfig.message}</p>
+            <div class="modal-action">
+              <button class="btn btn-ghost" @click=${this.handleDialogCancel}>
                 ${this.confirmDialogConfig.cancelText}
               </button>
-              <button class="dialog-button confirm" @click=${this.handleDialogConfirm}>
+              <button class="btn btn-error" @click=${this.handleDialogConfirm}>
                 ${this.confirmDialogConfig.confirmText}
               </button>
             </div>
