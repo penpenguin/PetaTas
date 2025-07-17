@@ -16,7 +16,13 @@
   "background": {
     "service_worker": "background.js"
   },
+  "web_accessible_resources": [
+    {
+      "resources": ["styles.css", "*.css", "*.css.map", "icons/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self';"
+    "extension_pages": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' blob:; font-src 'self' data: blob:; img-src 'self' data: blob:; object-src 'none';"
   }
 }

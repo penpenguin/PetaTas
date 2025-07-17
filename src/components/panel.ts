@@ -1,8 +1,8 @@
 import { LitElement, html, css } from 'lit';
 import { state } from 'lit/decorators.js';
-import { Task, isValidTask } from './types.js';
-import { parseHTMLTable, isHTMLTable } from './utils/tableParser.js';
-import { generateMarkdownTable, copyMarkdownToClipboard } from './utils/markdown.js';
+import { Task, isValidTask } from '../types/types.js';
+import { parseHTMLTable, isHTMLTable } from '../utils/tableParser.js';
+import { generateMarkdownTable, copyMarkdownToClipboard } from '../utils/markdown.js';
 import './task-row.js';
 import { TaskRow } from './task-row.js';
 

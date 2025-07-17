@@ -1,4 +1,4 @@
-import { Task } from '../types.js';
+import { Task } from '../types/types.js';
 
 export interface MarkdownTableOptions {
   includeTimer?: boolean;

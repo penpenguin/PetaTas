@@ -1,17 +1,21 @@
 import { LitElement, html, css, PropertyValues } from 'lit';
 import { property, state } from 'lit/decorators.js';
-import { Task, TimerState } from './types.js';
-import { formatTime } from './utils/markdown.js';
+import { Task, TimerState } from '../types/types.js';
+import { formatTime } from '../utils/markdown.js';
+import { 
+  parseTimeInput,
+  createTimerState, 
+  startTimer, 
+  stopTimer, 
+  resetTimer, 
+  getCurrentElapsed 
+} from '../utils/timer.js';
 
 export class TaskRow extends LitElement {
   @property({ type: Object }) task!: Task;
   @property({ type: Array }) headers: string[] = [];
 
-  @state() private timerState: TimerState = {
-    isRunning: false,
-    startTime: 0,
-    previousElapsed: 0
-  };
+  @state() private timerState: TimerState = createTimerState();
 
   @state() private displayTime: string = '0:00';
   @state() private isEditing: boolean = false;
@@ -53,91 +57,39 @@ export class TaskRow extends LitElement {
   }
 
   private updateDisplayTime() {
-    const currentElapsed = this.timerState.isRunning
-      ? this.timerState.previousElapsed + (Date.now() - this.timerState.startTime)
-      : this.timerState.previousElapsed;
-    
+    const currentElapsed = getCurrentElapsed(this.timerState);
     this.displayTime = formatTime(currentElapsed);
   }
 
-  private parseTimeInput(input: string): number | null {
-    if (!input.trim()) return 0;
-    
-    const timeStr = input.trim();
-    const parts = timeStr.split(':').map(part => part.trim());
-    
-    if (parts.length === 2) {
-      // M:SS format
-      const minutes = parseInt(parts[0] || '0', 10);
-      const seconds = parseInt(parts[1] || '0', 10);
-      
-      if (isNaN(minutes) || isNaN(seconds) || minutes < 0 || seconds < 0 || seconds >= 60) {
-        return null;
-      }
-      
-      return (minutes * 60 + seconds) * 1000;
-    } else if (parts.length === 3) {
-      // H:MM:SS format
-      const hours = parseInt(parts[0] || '0', 10);
-      const minutes = parseInt(parts[1] || '0', 10);
-      const seconds = parseInt(parts[2] || '0', 10);
-      
-      if (isNaN(hours) || isNaN(minutes) || isNaN(seconds) || 
-          hours < 0 || minutes < 0 || seconds < 0 || 
-          minutes >= 60 || seconds >= 60) {
-        return null;
-      }
-      
-      return (hours * 3600 + minutes * 60 + seconds) * 1000;
-    }
-    
-    return null;
-  }
-
-  private startTimer() {
+  private startTimerHandler() {
     if (this.timerState.isRunning) return;
 
-    this.timerState = {
-      isRunning: true,
-      startTime: Date.now(),
-      previousElapsed: this.task.elapsedMs
-    };
-
+    this.timerState = startTimer(this.timerState, this.task.elapsedMs);
     this.animateTimer();
   }
 
   public stopTimer() {
     if (!this.timerState.isRunning) return;
 
-    const newElapsed = this.timerState.previousElapsed + (Date.now() - this.timerState.startTime);
-    
-    this.timerState = {
-      isRunning: false,
-      startTime: 0,
-      previousElapsed: newElapsed
-    };
+    const result = stopTimer(this.timerState);
+    this.timerState = result.state;
 
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
       this.animationId = 0;
     }
 
-    this.updateTask({ elapsedMs: newElapsed });
+    this.updateTask({ elapsedMs: result.elapsedMs });
   }
 
-  private resetTimer() {
+  private resetTimerHandler() {
     const wasRunning = this.timerState.isRunning;
     
     if (wasRunning) {
       this.stopTimer();
     }
 
-    this.timerState = {
-      isRunning: false,
-      startTime: 0,
-      previousElapsed: 0
-    };
-
+    this.timerState = resetTimer();
     this.updateDisplayTime();
     this.updateTask({ elapsedMs: 0 });
   }
@@ -166,7 +118,7 @@ export class TaskRow extends LitElement {
   }
 
   private saveEdit() {
-    const parsedMs = this.parseTimeInput(this.editValue);
+    const parsedMs = parseTimeInput(this.editValue);
     
     if (parsedMs === null) {
       // Invalid input - show feedback and stay in edit mode
@@ -326,9 +278,9 @@ export class TaskRow extends LitElement {
                   ${this.timerState.isRunning ? html`
                     <button class="btn btn-sm btn-error" @click=${this.stopTimer}>Stop</button>
                   ` : html`
-                    <button class="btn btn-sm btn-success" @click=${this.startTimer}>Start</button>
+                    <button class="btn btn-sm btn-success" @click=${this.startTimerHandler}>Start</button>
                   `}
-                  <button class="btn btn-sm btn-ghost" @click=${this.resetTimer}>Reset</button>
+                  <button class="btn btn-sm btn-ghost" @click=${this.resetTimerHandler}>Reset</button>
                   <button class="btn btn-sm btn-outline" @click=${this.startEdit}>Edit</button>
                 `}
               </div>

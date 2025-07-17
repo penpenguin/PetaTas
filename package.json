@@ -8,7 +8,7 @@
     "build:prod": "node build.js --prod",
     "test": "jest",
     "test:watch": "jest --watch",
-    "lint": "eslint *.ts utils/*.ts",
+    "lint": "eslint src/**/*.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
