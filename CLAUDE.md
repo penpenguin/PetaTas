@@ -17,13 +17,20 @@ PetaTas is a Chrome extension (Manifest V3) that enables users to paste HTML tab
 
 ### Key File Structure
 ```
-/manifest.json          - Manifest V3 with side_panel and storage permissions
-/panel.html + panel.ts  - Main side panel UI (Lit components)
-/styles.css            - Pure CSS styling (no frameworks)
-/utils/tableParser.ts  - HTML table → string[][] parser
-/utils/markdown.ts     - 2D array → GFM markdown generator
-/types.ts              - Task type definitions
-/dist/                 - esbuild output directory
+/manifest.json              - Manifest V3 with side_panel and storage permissions
+/panel.html                 - HTML entry point for side panel
+/styles.css                 - Tailwind CSS + daisyUI styling
+/src/
+  components/
+    panel.ts                - Main side panel UI (Lit components)
+    task-row.ts             - Individual task row component
+  utils/
+    tableParser.ts          - HTML table → string[][] parser
+    markdown.ts             - 2D array → GFM markdown generator
+  types/
+    types.ts                - Task type definitions
+  background.ts             - Chrome extension background script
+/dist/                      - esbuild output directory
 ```
 
 ## Development Commands
@@ -115,8 +122,9 @@ interface Task {
 - Verify markdown output matches GitHub Flavored Markdown spec
 
 ## Development Notes
-- No external CSS frameworks (Tailwind, CSS Modules, etc.)
-- Pure CSS styling in `/styles.css`
-- Lit components should follow TypeScript strict mode
+- Uses Tailwind CSS + daisyUI for modern, consistent styling
+- Organized src/ directory structure for maintainable code
+- All imports use `.js` extensions for ES module compatibility
+- Lit components follow TypeScript strict mode
 - Toast notifications for successful markdown copy operations
 - Clipboard operations use `navigator.clipboard` API

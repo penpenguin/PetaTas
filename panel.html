@@ -1,13 +1,66 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PetaTas - Task Manager</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Critical CSS fallback */
+    body { 
+      margin: 0; 
+      padding: 0; 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background-color: #ffffff;
+      color: #1f2937;
+    }
+    .min-h-screen { min-height: 100vh; }
+    .bg-base-100 { background-color: #ffffff; }
+    .text-base-content { color: #1f2937; }
+    .flex { display: flex; }
+    .flex-col { flex-direction: column; }
+    .items-center { align-items: center; }
+    .justify-center { justify-content: center; }
+    .p-4 { padding: 1rem; }
+    .py-6 { padding-top: 1.5rem; padding-bottom: 1.5rem; }
+    .rounded-lg { border-radius: 0.5rem; }
+    .bg-white { background-color: #ffffff; }
+    .border { border: 1px solid #e5e7eb; }
+    .text-2xl { font-size: 1.5rem; line-height: 2rem; }
+    .font-bold { font-weight: 700; }
+    .text-center { text-align: center; }
+    .btn { 
+      display: inline-flex; 
+      align-items: center; 
+      justify-content: center;
+      padding: 0.5rem 1rem; 
+      border: 1px solid transparent;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .btn-primary { 
+      background-color: #3b82f6; 
+      color: white; 
+    }
+    .btn-primary:hover { 
+      background-color: #2563eb; 
+    }
+    .gap-4 { gap: 1rem; }
+    .navbar { 
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between; 
+      padding: 1rem; 
+      background-color: #f3f4f6; 
+      border-bottom: 2px solid #e5e7eb;
+    }
+  </style>
 </head>
-<body>
-  <div id="app">
+<body class="bg-base-100 text-base-content">
+  <div id="app" class="min-h-screen">
     <main-panel></main-panel>
   </div>
   

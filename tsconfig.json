@@ -17,14 +17,14 @@
     "skipLibCheck": true,
     "declaration": false,
     "outDir": "./dist",
-    "rootDir": "./",
+    "rootDir": "./src",
+    "baseUrl": "./src",
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
     "types": ["chrome", "jest"]
   },
   "include": [
-    "*.ts",
-    "utils/**/*.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules",

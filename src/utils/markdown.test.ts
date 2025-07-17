@@ -3,7 +3,7 @@
  */
 
 import { generateMarkdownTable, formatTime, copyMarkdownToClipboard } from './markdown';
-import { Task } from '../types';
+import { Task } from '../types/types';
 
 // Mock navigator.clipboard
 Object.assign(navigator, {
