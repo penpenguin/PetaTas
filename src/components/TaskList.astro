@@ -1,0 +1,252 @@
+---
+// TaskList.astro - Task list component for PetaTas
+import { Task } from '../types/task';
+import TaskRow from './TaskRow.astro';
+
+export interface Props {
+  tasks: Task[];
+  onTaskToggle?: (taskId: string, completed: boolean) => void;
+  onTaskDelete?: (taskId: string) => void;
+  onTaskEdit?: (taskId: string, updates: Partial<Task>) => void;
+  onTimerToggle?: (taskId: string) => void;
+}
+
+const { tasks = [], onTaskToggle, onTaskDelete, onTaskEdit, onTimerToggle } = Astro.props;
+---
+
+<div id="task-list-container">
+  {tasks.length === 0 ? (
+    <div class="empty-state text-center py-8" data-testid="empty-state">
+      <div class="text-gray-500">
+        <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <p class="text-lg font-medium">No tasks yet. Paste a Markdown table to get started!</p>
+        <p class="text-sm mt-2">Copy a table from anywhere and click "Paste Markdown" to create your task list.</p>
+      </div>
+    </div>
+  ) : (
+    <div class="list" data-testid="task-list">
+      {tasks.map((task) => (
+        <TaskRow
+          key={task.id}
+          task={task}
+          onToggle={onTaskToggle}
+          onDelete={onTaskDelete}
+          onEdit={onTaskEdit}
+          onTimerToggle={onTimerToggle}
+        />
+      ))}
+    </div>
+  )}
+</div>
+
+<script>
+  // Client-side functionality for task list
+  import { Task } from '../types/task';
+
+  // Event handling for task operations
+  class TaskListManager {
+    private tasks: Task[] = [];
+    private activeTimers: Map<string, NodeJS.Timer> = new Map();
+    
+    constructor() {
+      this.setupEventListeners();
+    }
+
+    private setupEventListeners() {
+      // Task checkbox toggle
+      document.addEventListener('change', (e) => {
+        const target = e.target as HTMLInputElement;
+        if (target.type === 'checkbox' && target.dataset.taskId) {
+          this.handleTaskToggle(target.dataset.taskId, target.checked);
+        }
+      });
+
+      // Task actions (timer, delete)
+      document.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        const button = target.closest('button[data-action]') as HTMLButtonElement;
+        
+        if (button && button.dataset.taskId && button.dataset.action) {
+          const taskId = button.dataset.taskId;
+          const action = button.dataset.action;
+          
+          switch (action) {
+            case 'timer':
+              this.handleTimerToggle(taskId);
+              break;
+            case 'delete':
+              this.handleTaskDelete(taskId);
+              break;
+          }
+        }
+      });
+
+      // Task name editing
+      document.addEventListener('dblclick', (e) => {
+        const target = e.target as HTMLElement;
+        if (target.classList.contains('task-name') && target.dataset.taskId) {
+          this.handleTaskNameEdit(target.dataset.taskId);
+        }
+      });
+    }
+
+    private handleTaskToggle(taskId: string, completed: boolean) {
+      // Emit custom event
+      const event = new CustomEvent('taskToggle', {
+        detail: { taskId, completed }
+      });
+      document.dispatchEvent(event);
+    }
+
+    private handleTaskDelete(taskId: string) {
+      // Emit custom event
+      const event = new CustomEvent('taskDelete', {
+        detail: { taskId }
+      });
+      document.dispatchEvent(event);
+    }
+
+    private handleTimerToggle(taskId: string) {
+      // Emit custom event
+      const event = new CustomEvent('timerToggle', {
+        detail: { taskId }
+      });
+      document.dispatchEvent(event);
+    }
+
+    private handleTaskNameEdit(taskId: string) {
+      // Emit custom event
+      const event = new CustomEvent('taskEdit', {
+        detail: { taskId, field: 'name' }
+      });
+      document.dispatchEvent(event);
+    }
+
+    // Update task list display
+    public updateTasks(tasks: Task[]) {
+      this.tasks = tasks;
+      this.renderTasks();
+    }
+
+    private renderTasks() {
+      const container = document.querySelector('#task-list-container');
+      if (!container) return;
+
+      if (this.tasks.length === 0) {
+        container.innerHTML = this.renderEmptyState();
+      } else {
+        container.innerHTML = this.renderTaskList();
+      }
+    }
+
+    private renderEmptyState(): string {
+      return `
+        <div class="empty-state text-center py-8" data-testid="empty-state">
+          <div class="text-gray-500">
+            <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <p class="text-lg font-medium">No tasks yet. Paste a Markdown table to get started!</p>
+            <p class="text-sm mt-2">Copy a table from anywhere and click "Paste Markdown" to create your task list.</p>
+          </div>
+        </div>
+      `;
+    }
+
+    private renderTaskList(): string {
+      return `
+        <div class="list" data-testid="task-list">
+          ${this.tasks.map(task => this.renderTaskRow(task)).join('')}
+        </div>
+      `;
+    }
+
+    private renderTaskRow(task: Task): string {
+      const elapsedTime = this.formatTime(task.elapsedMs);
+      const isRunning = this.activeTimers.has(task.id);
+      
+      return `
+        <div class="list-row" data-testid="task-${task.id}">
+          <input 
+            type="checkbox" 
+            class="checkbox" 
+            ${task.status === 'done' ? 'checked' : ''}
+            data-task-id="${task.id}"
+          />
+          <div class="list-col-grow">
+            <input type="text" class="task-name-input hidden w-full bg-transparent border-none outline-none" value="${task.name}" data-task-id="${task.id}" />
+            <span class="task-name cursor-pointer" data-task-id="${task.id}">${task.name}</span>
+            ${task.notes ? `<div class="text-sm text-gray-500">${task.notes}</div>` : ''}
+          </div>
+          <div class="timer-display font-mono text-sm">${elapsedTime}</div>
+          <div class="flex gap-1">
+            <button class="btn btn-ghost btn-xs" data-task-id="${task.id}" data-action="timer">
+              ${isRunning ? '⏸️' : '▶️'}
+            </button>
+            <button class="btn btn-ghost btn-xs" data-task-id="${task.id}" data-action="delete">
+              🗑️
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    private formatTime(ms: number): string {
+      const seconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+      
+      return `${hours.toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
+    }
+  }
+
+  // Initialize task list manager
+  const taskListManager = new TaskListManager();
+
+  // Export for global access
+  (window as any).taskListManager = taskListManager;
+</script>
+
+<style>
+  .list-row {
+    @apply flex items-center gap-3 p-3 bg-base-200 rounded-lg hover:bg-base-300 transition-colors;
+  }
+
+  .list-col-grow {
+    @apply flex-1 min-w-0;
+  }
+
+  .task-name {
+    @apply font-medium truncate;
+  }
+
+  .task-name:hover {
+    @apply text-primary;
+  }
+
+  .timer-display {
+    @apply text-sm font-mono text-base-content/70;
+  }
+
+  .empty-state {
+    @apply flex flex-col items-center justify-center h-full;
+  }
+
+  .checkbox {
+    @apply flex-shrink-0;
+  }
+
+  .checkbox:checked {
+    @apply accent-primary;
+  }
+
+  .task-name-input {
+    @apply w-full bg-transparent border-none outline-none;
+  }
+
+  .task-name-input:focus {
+    @apply ring-2 ring-primary rounded px-1;
+  }
+</style>

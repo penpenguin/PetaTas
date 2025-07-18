@@ -2,27 +2,35 @@
   "manifest_version": 3,
   "name": "PetaTas",
   "version": "1.0.0",
-  "description": "Table-based task management with timers and markdown export",
+  "description": "Markdown table-based task management with timers and side panel",
   "permissions": [
     "storage",
-    "sidePanel"
+    "sidePanel",
+    "clipboardRead",
+    "clipboardWrite"
   ],
   "action": {
-    "default_title": "Open PetaTas"
+    "default_title": "Open PetaTas Task Manager"
   },
   "side_panel": {
     "default_path": "panel.html"
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "service-worker.js"
   },
   "web_accessible_resources": [
     {
-      "resources": ["styles.css", "*.css", "*.css.map", "icons/*"],
+      "resources": ["assets/*", "*.css", "*.js"],
       "matches": ["<all_urls>"]
     }
   ],
   "content_security_policy": {
     "extension_pages": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' blob:; font-src 'self' data: blob:; img-src 'self' data: blob:; object-src 'none';"
+  },
+  "host_permissions": [],
+  "icons": {
+    "16": "assets/icon-16.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
   }
 }

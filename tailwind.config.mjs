@@ -1,41 +1,6 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
-  content: [
-    "./panel.html",
-    "./panel.ts", 
-    "./task-row.ts",
-    "./utils/*.ts",
-    "./src/**/*.{js,ts,jsx,tsx,html}",
-    "./dist/*.js",
-    "./dist/*.html"
-  ],
-  safelist: [
-    // Core daisyUI components
-    'navbar', 'navbar-start', 'navbar-end',
-    'btn', 'btn-primary', 'btn-error', 'btn-ghost', 'btn-sm', 'btn-success', 'btn-outline',
-    'badge', 'badge-outline',
-    'hero', 'hero-content',
-    'modal', 'modal-open', 'modal-box', 'modal-action',
-    'toast', 'toast-end', 'toast-start',
-    'alert', 'alert-success',
-    'card', 'card-body',
-    'checkbox', 'checkbox-primary',
-    'textarea', 'textarea-bordered',
-    
-    // Theme system
-    'bg-base-100', 'bg-base-200', 'bg-base-300',
-    'text-base-content', 'text-base-content/70', 'text-base-content/60',
-    'border-base-300', 'text-primary',
-    
-    // Custom grid layouts
-    'grid-cols-[auto_1fr_auto_auto]',
-    
-    // Layout utilities that may be dynamically generated
-    'min-w-\\[\\d+px\\]',
-    'transition-all', 'duration-300', 'duration-200', 'ease-in-out',
-    'shadow-xl', 'shadow-2xl', 'hover:shadow-2xl',
-    'opacity-70', 'animate-pulse'
-  ],
+export default {
+  content: ['./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}'],
   theme: {
     extend: {
       fontFamily: {

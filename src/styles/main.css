@@ -1,0 +1,148 @@
+/* Main styles for PetaTas Chrome Extension */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles for the extension */
+body {
+  @apply bg-base-100 text-base-content;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+#panel-root {
+  @apply h-screen overflow-hidden;
+}
+
+.drawer {
+  @apply h-full;
+}
+
+.drawer-content {
+  @apply flex flex-col h-full;
+}
+
+.navbar {
+  @apply flex-none border-b border-base-300;
+}
+
+.task-list-container {
+  @apply flex-1 overflow-y-auto;
+}
+
+.list {
+  @apply space-y-2;
+}
+
+.list-row {
+  @apply flex items-center gap-3 p-3 bg-base-200 rounded-lg hover:bg-base-300 transition-colors;
+}
+
+.list-col-grow {
+  @apply flex-1 min-w-0;
+}
+
+.task-name {
+  @apply font-medium truncate;
+}
+
+.timer-display {
+  @apply text-sm font-mono text-base-content/70;
+}
+
+.empty-state {
+  @apply flex flex-col items-center justify-center h-full;
+}
+
+/* Toast styles */
+.toast {
+  @apply fixed z-50;
+}
+
+.alert {
+  @apply flex items-center gap-2 p-4 rounded-lg shadow-lg;
+}
+
+.alert-success {
+  @apply bg-success text-success-content;
+}
+
+.alert-error {
+  @apply bg-error text-error-content;
+}
+
+.alert-warning {
+  @apply bg-warning text-warning-content;
+}
+
+/* Checkbox styles */
+.checkbox {
+  @apply flex-shrink-0;
+}
+
+.checkbox:checked {
+  @apply accent-primary;
+}
+
+/* Button styles */
+.btn {
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors;
+}
+
+.btn-primary {
+  @apply bg-primary text-primary-content hover:bg-primary/90;
+}
+
+.btn-outline {
+  @apply border border-base-300 bg-transparent hover:bg-base-200;
+}
+
+.btn-ghost {
+  @apply bg-transparent hover:bg-base-200;
+}
+
+.btn-sm {
+  @apply px-3 py-1.5 text-sm;
+}
+
+.btn-xs {
+  @apply px-2 py-1 text-xs;
+}
+
+/* Utility classes */
+.hidden {
+  display: none !important;
+}
+
+.container {
+  @apply max-w-none w-full;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .navbar {
+    @apply flex-col gap-2 p-2;
+  }
+  
+  .navbar .flex-1,
+  .navbar .flex-none {
+    @apply w-full;
+  }
+  
+  .list-row {
+    @apply flex-col items-start gap-2 text-sm;
+  }
+  
+  .timer-display {
+    @apply self-end;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+  }
+}

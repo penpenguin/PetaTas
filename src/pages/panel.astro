@@ -1,0 +1,274 @@
+---
+// Panel.astro - Main Chrome Extension Side Panel
+import { Task } from '../types/task';
+import { StorageManager } from '../utils/storage-manager';
+
+// Server-side logic for loading initial tasks
+const storageManager = new StorageManager();
+// Note: In actual Chrome extension, this would be handled client-side
+// This is just for initial hydration
+
+export interface Props {
+  title?: string;
+  tasks?: Task[];
+}
+
+const { title = 'PetaTas' } = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PetaTas - Task Manager</title>
+    <link rel="stylesheet" href="/src/styles/main.css" />
+  </head>
+  <body>
+    <div id="panel-root">
+      <div class="drawer drawer-mobile">
+        <div class="drawer-content">
+          <!-- Navbar with controls -->
+          <div class="navbar bg-base-100 shadow-lg">
+            <div class="flex-1">
+              <h1 class="text-xl font-bold" data-testid="panel-title">{title}</h1>
+            </div>
+            <div class="flex-none gap-2">
+              <button 
+                class="btn btn-primary btn-sm" 
+                data-testid="paste-button"
+                id="paste-button"
+              >
+                Paste Markdown
+              </button>
+              <button 
+                class="btn btn-outline btn-sm" 
+                data-testid="export-button"
+                id="export-button"
+              >
+                Export
+              </button>
+            </div>
+          </div>
+
+          <!-- Main content area -->
+          <div class="container mx-auto p-4">
+            <div class="task-list-container">
+              <!-- Empty state -->
+              <div class="empty-state text-center py-8" data-testid="empty-state" id="empty-state">
+                <div class="text-gray-500">
+                  <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
+                  <p class="text-lg font-medium">No tasks yet. Paste a Markdown table to get started!</p>
+                  <p class="text-sm mt-2">Copy a table from anywhere and click "Paste Markdown" to create your task list.</p>
+                </div>
+              </div>
+
+              <!-- Task list -->
+              <div class="list hidden" data-testid="task-list" id="task-list">
+                <!-- Task rows will be dynamically inserted here -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div class="toast toast-end" id="toast-container">
+      <!-- Toast messages will be dynamically inserted here -->
+    </div>
+
+    <!-- Client-side JavaScript -->
+    <script>
+      // Import types and utilities
+      import { StorageManager } from '../utils/storage-manager';
+      import { parseMarkdownTable } from '../utils/markdown-parser';
+
+      // Initialize storage manager
+      const storageManager = new StorageManager();
+      
+      // Global state
+      let currentTasks = [];
+      let activeTimers = new Map();
+
+      // DOM elements
+      const pasteButton = document.getElementById('paste-button') as HTMLButtonElement;
+      const exportButton = document.getElementById('export-button') as HTMLButtonElement;
+      const taskList = document.getElementById('task-list') as HTMLDivElement;
+      const emptyState = document.getElementById('empty-state') as HTMLDivElement;
+      const toastContainer = document.getElementById('toast-container') as HTMLDivElement;
+
+      // Initialize app
+      async function initializeApp() {
+        try {
+          // Load tasks from storage
+          currentTasks = await storageManager.loadTasks();
+          renderTasks();
+          
+          // Setup event listeners
+          setupEventListeners();
+          
+          console.log('PetaTas initialized successfully');
+        } catch (error) {
+          console.error('Failed to initialize PetaTas:', error);
+          showToast('Failed to initialize app', 'error');
+        }
+      }
+
+      // Setup event listeners
+      function setupEventListeners() {
+        pasteButton.addEventListener('click', handlePasteClick);
+        exportButton.addEventListener('click', handleExportClick);
+      }
+
+      // Handle paste button click
+      async function handlePasteClick() {
+        try {
+          const clipboardText = await navigator.clipboard.readText();
+          const parsedTable = parseMarkdownTable(clipboardText);
+          
+          if (!parsedTable) {
+            showToast('Invalid Markdown table format', 'error');
+            return;
+          }
+
+          // Convert to tasks
+          const newTasks = parsedTable.rows.map(row => {
+            const task = {
+              id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              name: row[0] || 'Unnamed Task',
+              status: (row[1]?.toLowerCase() === 'done' ? 'done' : 'todo'),
+              notes: row[2] || '',
+              elapsedMs: 0,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            };
+            return task;
+          });
+
+          currentTasks = newTasks;
+          await storageManager.saveTasks(currentTasks);
+          renderTasks();
+          showToast(`Imported ${newTasks.length} tasks`, 'success');
+        } catch (error) {
+          console.error('Failed to paste:', error);
+          showToast('Failed to paste from clipboard', 'error');
+        }
+      }
+
+      // Handle export button click
+      async function handleExportClick() {
+        try {
+          if (currentTasks.length === 0) {
+            showToast('No tasks to export', 'warning');
+            return;
+          }
+
+          const headers = ['Name', 'Status', 'Notes'];
+          const rows = currentTasks.map(task => [
+            task.name,
+            task.status,
+            task.notes
+          ]);
+
+          const markdown = generateMarkdownTable(headers, rows);
+          await navigator.clipboard.writeText(markdown);
+          showToast('Copied to clipboard', 'success');
+        } catch (error) {
+          console.error('Failed to export:', error);
+          showToast('Failed to copy to clipboard', 'error');
+        }
+      }
+
+      // Generate markdown table
+      function generateMarkdownTable(headers: string[], rows: string[][]): string {
+        let markdown = '| ' + headers.join(' | ') + ' |\n';
+        markdown += '|' + headers.map(() => '---').join('|') + '|\n';
+        
+        for (const row of rows) {
+          markdown += '| ' + row.join(' | ') + ' |\n';
+        }
+        
+        return markdown;
+      }
+
+      // Render tasks
+      function renderTasks() {
+        if (currentTasks.length === 0) {
+          emptyState.classList.remove('hidden');
+          taskList.classList.add('hidden');
+          return;
+        }
+
+        emptyState.classList.add('hidden');
+        taskList.classList.remove('hidden');
+
+        taskList.innerHTML = currentTasks.map(task => renderTaskRow(task)).join('');
+      }
+
+      // Render individual task row
+      function renderTaskRow(task) {
+        const elapsedTime = formatTime(task.elapsedMs);
+        
+        return `
+          <div class="list-row" data-testid="task-${task.id}">
+            <input 
+              type="checkbox" 
+              class="checkbox" 
+              ${task.status === 'done' ? 'checked' : ''}
+              data-task-id="${task.id}"
+            />
+            <div class="list-col-grow">
+              <span class="task-name">${task.name}</span>
+              ${task.notes ? `<div class="text-sm text-gray-500">${task.notes}</div>` : ''}
+            </div>
+            <div class="timer-display font-mono text-sm">${elapsedTime}</div>
+            <div class="flex gap-1">
+              <button class="btn btn-ghost btn-xs" data-task-id="${task.id}" data-action="timer">
+                ${activeTimers.has(task.id) ? '⏸️' : '▶️'}
+              </button>
+              <button class="btn btn-ghost btn-xs" data-task-id="${task.id}" data-action="delete">
+                🗑️
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      // Format time from milliseconds
+      function formatTime(ms: number): string {
+        const seconds = Math.floor(ms / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        
+        return `${hours.toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
+      }
+
+      // Show toast notification
+      function showToast(message: string, type: 'success' | 'error' | 'warning' = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type} shadow-lg`;
+        toast.innerHTML = `
+          <div>
+            <span>${message}</span>
+          </div>
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        setTimeout(() => {
+          toast.remove();
+        }, 3000);
+      }
+
+      // Initialize when DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeApp);
+      } else {
+        initializeApp();
+      }
+    </script>
+  </body>
+</html>

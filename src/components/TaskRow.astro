@@ -1,0 +1,301 @@
+---
+// TaskRow.astro - Individual task row component for PetaTas
+import { Task } from '../types/task';
+
+export interface Props {
+  task: Task;
+  isTimerRunning?: boolean;
+  onToggle?: (taskId: string, completed: boolean) => void;
+  onDelete?: (taskId: string) => void;
+  onEdit?: (taskId: string, updates: Partial<Task>) => void;
+  onTimerToggle?: (taskId: string) => void;
+}
+
+const { task, isTimerRunning = false, onToggle, onDelete, onEdit, onTimerToggle } = Astro.props;
+
+// Format elapsed time
+function formatTime(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  
+  return `${hours.toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
+}
+
+const elapsedTime = formatTime(task.elapsedMs);
+---
+
+<div class="list-row" data-testid={`task-${task.id}`}>
+  <input 
+    type="checkbox" 
+    class="checkbox" 
+    checked={task.status === 'done'}
+    data-task-id={task.id}
+    id={`checkbox-${task.id}`}
+  />
+  
+  <div class="list-col-grow">
+    <input 
+      type="text" 
+      class="task-name-input hidden w-full bg-transparent border-none outline-none" 
+      value={task.name} 
+      data-task-id={task.id}
+      id={`input-${task.id}`}
+    />
+    <span 
+      class="task-name cursor-pointer" 
+      data-task-id={task.id}
+      id={`name-${task.id}`}
+    >
+      {task.name}
+    </span>
+    {task.notes && (
+      <div class="text-sm text-gray-500 mt-1">
+        {task.notes}
+      </div>
+    )}
+  </div>
+  
+  <div class="timer-display font-mono text-sm" id={`timer-${task.id}`}>
+    {elapsedTime}
+  </div>
+  
+  <div class="flex gap-1">
+    <button 
+      class="btn btn-ghost btn-xs" 
+      data-task-id={task.id} 
+      data-action="timer"
+      title={isTimerRunning ? 'Pause timer' : 'Start timer'}
+    >
+      {isTimerRunning ? '⏸️' : '▶️'}
+    </button>
+    <button 
+      class="btn btn-ghost btn-xs" 
+      data-task-id={task.id} 
+      data-action="delete"
+      title="Delete task"
+    >
+      🗑️
+    </button>
+  </div>
+</div>
+
+<script define:vars={{ task, isTimerRunning }}>
+  // Client-side functionality for individual task row
+  class TaskRowManager {
+    private taskId: string;
+    private isEditing: boolean = false;
+    
+    constructor(taskId: string) {
+      this.taskId = taskId;
+      this.setupEventListeners();
+    }
+
+    private setupEventListeners() {
+      // Task name editing
+      const nameSpan = document.getElementById(`name-${this.taskId}`);
+      const nameInput = document.getElementById(`input-${this.taskId}`) as HTMLInputElement;
+      
+      if (nameSpan && nameInput) {
+        nameSpan.addEventListener('dblclick', () => {
+          this.enterEditMode(nameSpan, nameInput);
+        });
+
+        nameInput.addEventListener('blur', () => {
+          this.exitEditMode(nameSpan, nameInput);
+        });
+
+        nameInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            this.exitEditMode(nameSpan, nameInput);
+          } else if (e.key === 'Escape') {
+            nameInput.value = nameSpan.textContent || '';
+            this.exitEditMode(nameSpan, nameInput);
+          }
+        });
+      }
+
+      // Checkbox toggle
+      const checkbox = document.getElementById(`checkbox-${this.taskId}`) as HTMLInputElement;
+      if (checkbox) {
+        checkbox.addEventListener('change', (e) => {
+          const target = e.target as HTMLInputElement;
+          this.handleTaskToggle(target.checked);
+        });
+      }
+
+      // Button actions
+      const buttons = document.querySelectorAll(`button[data-task-id="${this.taskId}"]`);
+      buttons.forEach(button => {
+        button.addEventListener('click', (e) => {
+          const target = e.target as HTMLButtonElement;
+          const action = target.dataset.action;
+          
+          switch (action) {
+            case 'timer':
+              this.handleTimerToggle();
+              break;
+            case 'delete':
+              this.handleTaskDelete();
+              break;
+          }
+        });
+      });
+    }
+
+    private enterEditMode(nameSpan: HTMLElement, nameInput: HTMLInputElement) {
+      if (this.isEditing) return;
+      
+      this.isEditing = true;
+      nameSpan.classList.add('hidden');
+      nameInput.classList.remove('hidden');
+      nameInput.focus();
+      nameInput.select();
+    }
+
+    private exitEditMode(nameSpan: HTMLElement, nameInput: HTMLInputElement) {
+      if (!this.isEditing) return;
+      
+      this.isEditing = false;
+      nameSpan.classList.remove('hidden');
+      nameInput.classList.add('hidden');
+      
+      // Update task name if changed
+      const newName = nameInput.value.trim();
+      if (newName && newName !== nameSpan.textContent) {
+        nameSpan.textContent = newName;
+        this.handleTaskEdit({ name: newName });
+      }
+    }
+
+    private handleTaskToggle(completed: boolean) {
+      // Emit custom event
+      const event = new CustomEvent('taskToggle', {
+        detail: { taskId: this.taskId, completed }
+      });
+      document.dispatchEvent(event);
+    }
+
+    private handleTaskDelete() {
+      // Emit custom event
+      const event = new CustomEvent('taskDelete', {
+        detail: { taskId: this.taskId }
+      });
+      document.dispatchEvent(event);
+    }
+
+    private handleTimerToggle() {
+      // Emit custom event
+      const event = new CustomEvent('timerToggle', {
+        detail: { taskId: this.taskId }
+      });
+      document.dispatchEvent(event);
+    }
+
+    private handleTaskEdit(updates: Partial<Task>) {
+      // Emit custom event
+      const event = new CustomEvent('taskEdit', {
+        detail: { taskId: this.taskId, updates }
+      });
+      document.dispatchEvent(event);
+    }
+
+    // Update timer display
+    public updateTimer(elapsedMs: number) {
+      const timerDisplay = document.getElementById(`timer-${this.taskId}`);
+      if (timerDisplay) {
+        timerDisplay.textContent = this.formatTime(elapsedMs);
+      }
+    }
+
+    // Update timer button state
+    public updateTimerButton(isRunning: boolean) {
+      const timerButton = document.querySelector(`button[data-task-id="${this.taskId}"][data-action="timer"]`);
+      if (timerButton) {
+        timerButton.textContent = isRunning ? '⏸️' : '▶️';
+        timerButton.setAttribute('title', isRunning ? 'Pause timer' : 'Start timer');
+      }
+    }
+
+    private formatTime(ms: number): string {
+      const seconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+      
+      return `${hours.toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
+    }
+  }
+
+  // Initialize task row manager
+  const taskRowManager = new TaskRowManager(task.id);
+
+  // Store reference for global access
+  if (!(window as any).taskRowManagers) {
+    (window as any).taskRowManagers = new Map();
+  }
+  (window as any).taskRowManagers.set(task.id, taskRowManager);
+</script>
+
+<style>
+  .list-row {
+    @apply flex items-center gap-3 p-3 bg-base-200 rounded-lg hover:bg-base-300 transition-colors;
+  }
+
+  .list-col-grow {
+    @apply flex-1 min-w-0;
+  }
+
+  .task-name {
+    @apply font-medium truncate block;
+  }
+
+  .task-name:hover {
+    @apply text-primary;
+  }
+
+  .timer-display {
+    @apply text-sm font-mono text-base-content/70 min-w-[5rem] text-center;
+  }
+
+  .checkbox {
+    @apply flex-shrink-0;
+  }
+
+  .checkbox:checked {
+    @apply accent-primary;
+  }
+
+  .task-name-input {
+    @apply w-full bg-transparent border-none outline-none;
+  }
+
+  .task-name-input:focus {
+    @apply ring-2 ring-primary rounded px-1;
+  }
+
+  .btn {
+    @apply transition-transform hover:scale-110;
+  }
+
+  .btn:active {
+    @apply scale-95;
+  }
+
+  /* Completed task styling */
+  .checkbox:checked ~ .list-col-grow .task-name {
+    @apply text-base-content/50 line-through;
+  }
+
+  /* Status indicators */
+  .list-row[data-status="done"] {
+    @apply bg-success/10 border-l-4 border-success;
+  }
+
+  .list-row[data-status="in-progress"] {
+    @apply bg-warning/10 border-l-4 border-warning;
+  }
+
+  .list-row[data-status="todo"] {
+    @apply bg-base-200;
+  }
+</style>
