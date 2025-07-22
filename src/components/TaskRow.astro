@@ -1,6 +1,6 @@
 ---
 // TaskRow.astro - Individual task row component for PetaTas
-import { Task } from '../types/task';
+import type { Task } from '../types/task';
 
 export interface Props {
   task: Task;
@@ -11,7 +11,7 @@ export interface Props {
   onTimerToggle?: (taskId: string) => void;
 }
 
-const { task, isTimerRunning = false, onToggle, onDelete, onEdit, onTimerToggle } = Astro.props;
+const { task, isTimerRunning = false } = Astro.props;
 
 // Format elapsed time
 function formatTime(ms: number): string {
@@ -80,7 +80,7 @@ const elapsedTime = formatTime(task.elapsedMs);
   </div>
 </div>
 
-<script define:vars={{ task, isTimerRunning }}>
+<script define:vars={{ task }}>
   // Client-side functionality for individual task row
   class TaskRowManager {
     private taskId: string;

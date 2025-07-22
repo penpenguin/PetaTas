@@ -1,7 +1,8 @@
 // Storage Manager for PetaTas Chrome Extension
 // Handles chrome.storage.sync operations with error handling and quota management
 
-import { Task, TaskData, validateTaskData } from '../types/task';
+import type { Task } from '../types/task';
+import { validateTaskData } from '../types/task';
 
 export interface TimerState {
   taskId: string;
@@ -20,7 +21,7 @@ export class StorageManager {
   private static readonly STORAGE_KEY_TASKS = 'tasks';
   private static readonly STORAGE_KEY_TIMER_PREFIX = 'timer_';
   private static readonly MAX_STORAGE_BYTES = 100 * 1024; // 100KB chrome.storage.sync limit
-  private static readonly MAX_ITEM_BYTES = 8 * 1024; // 8KB per item limit
+  // private static readonly MAX_ITEM_BYTES = 8 * 1024; // 8KB per item limit - reserved for future use
 
   // Save tasks to chrome.storage.sync
   async saveTasks(tasks: Task[]): Promise<void> {

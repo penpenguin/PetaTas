@@ -61,12 +61,13 @@ export function createTask(headers: string[], row: string[]): Task {
         task.name = value;
         break;
       case 'status':
-      case 'state':
+      case 'state': {
         const normalizedStatus = value.toLowerCase().trim();
         if (['todo', 'in-progress', 'done'].includes(normalizedStatus)) {
           task.status = normalizedStatus as TaskStatus;
         }
         break;
+      }
       case 'notes':
       case 'description':
       case 'comment':
@@ -97,5 +98,5 @@ export function validateTaskData(data: any): data is TaskData {
 
 // Generate unique task ID
 function generateTaskId(): string {
-  return `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `task_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 }

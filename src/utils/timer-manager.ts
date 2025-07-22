@@ -1,7 +1,8 @@
 // Timer Manager for PetaTas Chrome Extension
 // Handles per-task timers with persistence across service-worker restarts
 
-import { StorageManager, TimerState } from './storage-manager';
+import { StorageManager } from './storage-manager';
+import type { TimerState } from './storage-manager';
 
 export interface TimerEventMap {
   timerStart: (taskId: string) => void;
@@ -11,9 +12,9 @@ export interface TimerEventMap {
 }
 
 export class TimerManager {
-  private timers: Map<string, NodeJS.Timer> = new Map();
+  private timers: Map<string, NodeJS.Timeout> = new Map();
   private timerStates: Map<string, TimerState> = new Map();
-  private eventListeners: Map<keyof TimerEventMap, Set<Function>> = new Map();
+  private eventListeners: Map<keyof TimerEventMap, Set<(...args: any[]) => void>> = new Map();
   private storageManager: StorageManager;
 
   constructor(storageManager?: StorageManager) {
@@ -256,7 +257,7 @@ export class TimerManager {
   // Cleanup all timers
   destroy(): void {
     // Stop all active timers
-    for (const [taskId, intervalId] of this.timers) {
+    for (const intervalId of this.timers.values()) {
       clearInterval(intervalId);
     }
     

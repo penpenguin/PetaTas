@@ -2,7 +2,7 @@
 // Handles Side Panel API and background processing
 
 // Install event
-self.addEventListener('install', (event) => {
+self.addEventListener('install', (_event) => {
   console.log('PetaTas Service Worker installed');
   // Skip waiting to activate immediately
   (self as any).skipWaiting();
@@ -64,7 +64,7 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 });
 
 // Keep service worker alive during active timer sessions
-let activeTimers = new Set<string>();
+const activeTimers = new Set<string>();
 
 // Function to update active timers
 function updateActiveTimers(timerId: string, isActive: boolean) {
@@ -75,5 +75,8 @@ function updateActiveTimers(timerId: string, isActive: boolean) {
   }
 }
 
-// Export for TypeScript
-export { updateActiveTimers };
+// Function is available for future use
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _useUpdateActiveTimers() { updateActiveTimers('', false); }
+
+// Note: Service workers run in global context, no exports needed

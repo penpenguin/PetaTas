@@ -1,6 +1,6 @@
 ---
 // TaskList.astro - Task list component for PetaTas
-import { Task } from '../types/task';
+import type { Task } from '../types/task';
 import TaskRow from './TaskRow.astro';
 
 export interface Props {
@@ -43,12 +43,12 @@ const { tasks = [], onTaskToggle, onTaskDelete, onTaskEdit, onTimerToggle } = As
 
 <script>
   // Client-side functionality for task list
-  import { Task } from '../types/task';
+  import type { Task } from '../types/task';
 
   // Event handling for task operations
   class TaskListManager {
     private tasks: Task[] = [];
-    private activeTimers: Map<string, NodeJS.Timer> = new Map();
+    private activeTimers: Map<string, NodeJS.Timeout> = new Map();
     
     constructor() {
       this.setupEventListeners();

@@ -1,12 +1,10 @@
 ---
 // Panel.astro - Main Chrome Extension Side Panel
-import { Task } from '../types/task';
+import type { Task } from '../types/task';
 import { StorageManager } from '../utils/storage-manager';
 
-// Server-side logic for loading initial tasks
-const storageManager = new StorageManager();
-// Note: In actual Chrome extension, this would be handled client-side
-// This is just for initial hydration
+// Note: In actual Chrome extension, storage operations are handled client-side
+// Server-side storage manager is not used in production build
 
 export interface Props {
   title?: string;
@@ -90,8 +88,8 @@ const { title = 'PetaTas' } = Astro.props;
       const storageManager = new StorageManager();
       
       // Global state
-      let currentTasks = [];
-      let activeTimers = new Map();
+      let currentTasks: Task[] = [];
+      const activeTimers = new Map<string, boolean>();
 
       // DOM elements
       const pasteButton = document.getElementById('paste-button') as HTMLButtonElement;
@@ -137,7 +135,7 @@ const { title = 'PetaTas' } = Astro.props;
           // Convert to tasks
           const newTasks = parsedTable.rows.map(row => {
             const task = {
-              id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              id: `task_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
               name: row[0] || 'Unnamed Task',
               status: (row[1]?.toLowerCase() === 'done' ? 'done' : 'todo'),
               notes: row[2] || '',
@@ -209,7 +207,7 @@ const { title = 'PetaTas' } = Astro.props;
       }
 
       // Render individual task row
-      function renderTaskRow(task) {
+      function renderTaskRow(task: Task) {
         const elapsedTime = formatTime(task.elapsedMs);
         
         return `
