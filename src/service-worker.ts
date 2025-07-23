@@ -5,6 +5,7 @@
 self.addEventListener('install', (_event) => {
   console.log('PetaTas Service Worker installed');
   // Skip waiting to activate immediately
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (self as any).skipWaiting();
 });
 
@@ -12,6 +13,7 @@ self.addEventListener('install', (_event) => {
 self.addEventListener('activate', (event) => {
   console.log('PetaTas Service Worker activated');
   // Claim all clients immediately
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (event as any).waitUntil((self as any).clients.claim());
 });
 

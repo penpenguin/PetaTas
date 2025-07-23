@@ -1,11 +1,31 @@
-// PetaTas Chrome Extension - Client-side JavaScript
+// PetaTas Chrome Extension - Client-side TypeScript
 // This file handles all client-side functionality for the side panel
 
+interface Task {
+  id: string;
+  name: string;
+  status: 'todo' | 'in-progress' | 'done';
+  notes: string;
+  elapsedMs: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface Timer {
+  startTime: number;
+  interval: NodeJS.Timeout;
+}
+
+interface ParsedTable {
+  headers: string[];
+  rows: string[][];
+}
+
 class PetaTasClient {
+  private currentTasks: Task[] = [];
+  private activeTimers = new Map<string, Timer>();
+  
   constructor() {
-    this.currentTasks = [];
-    this.activeTimers = new Map();
-    
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => this.initialize());
@@ -14,7 +34,7 @@ class PetaTasClient {
     }
   }
 
-  async initialize() {
+  async initialize(): Promise<void> {
     try {
       console.log('PetaTas client initializing...');
       
@@ -34,11 +54,11 @@ class PetaTasClient {
       this.showToast('PetaTas loaded successfully', 'success');
     } catch (error) {
       console.error('Failed to initialize PetaTas:', error);
-      this.showToast(`Failed to initialize app: ${error.message}`, 'error');
+      this.showToast(`Failed to initialize app: ${(error as Error).message}`, 'error');
     }
   }
 
-  setupEventListeners() {
+  setupEventListeners(): void {
     const pasteButton = document.getElementById('paste-button');
     const exportButton = document.getElementById('export-button');
     
@@ -51,7 +71,7 @@ class PetaTasClient {
     }
   }
 
-  async loadTasks() {
+  async loadTasks(): Promise<void> {
     try {
       const result = await chrome.storage.sync.get('tasks');
       this.currentTasks = result.tasks || [];
@@ -68,7 +88,7 @@ class PetaTasClient {
     }
   }
 
-  async saveTasks() {
+  async saveTasks(): Promise<void> {
     try {
       await chrome.storage.sync.set({ tasks: this.currentTasks });
     } catch (error) {
@@ -77,7 +97,7 @@ class PetaTasClient {
     }
   }
 
-  async handlePasteClick() {
+  async handlePasteClick(): Promise<void> {
     try {
       // Check clipboard permissions
       if (!navigator.clipboard || !navigator.clipboard.readText) {
@@ -99,10 +119,10 @@ class PetaTasClient {
       }
 
       // Convert to tasks
-      const newTasks = parsedTable.rows.map(row => ({
-        id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      const newTasks: Task[] = parsedTable.rows.map(row => ({
+        id: `task_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         name: row[0] || 'Unnamed Task',
-        status: (row[1]?.toLowerCase() === 'done' ? 'done' : 'todo'),
+        status: (row[1]?.toLowerCase() === 'done' ? 'done' : 'todo') as Task['status'],
         notes: row[2] || '',
         elapsedMs: 0,
         createdAt: new Date(),
@@ -115,15 +135,15 @@ class PetaTasClient {
       this.showToast(`Imported ${newTasks.length} tasks`, 'success');
     } catch (error) {
       console.error('Failed to paste:', error);
-      if (error.name === 'NotAllowedError') {
+      if ((error as Error).name === 'NotAllowedError') {
         this.showToast('Clipboard access denied. Please allow clipboard permissions.', 'error');
       } else {
-        this.showToast(`Failed to paste from clipboard: ${error.message}`, 'error');
+        this.showToast(`Failed to paste from clipboard: ${(error as Error).message}`, 'error');
       }
     }
   }
 
-  async handleExportClick() {
+  async handleExportClick(): Promise<void> {
     try {
       if (this.currentTasks.length === 0) {
         this.showToast('No tasks to export', 'warning');
@@ -147,15 +167,15 @@ class PetaTasClient {
       this.showToast(`Copied ${this.currentTasks.length} tasks to clipboard`, 'success');
     } catch (error) {
       console.error('Failed to export:', error);
-      if (error.name === 'NotAllowedError') {
+      if ((error as Error).name === 'NotAllowedError') {
         this.showToast('Clipboard access denied. Please allow clipboard permissions.', 'error');
       } else {
-        this.showToast(`Failed to copy to clipboard: ${error.message}`, 'error');
+        this.showToast(`Failed to copy to clipboard: ${(error as Error).message}`, 'error');
       }
     }
   }
 
-  parseMarkdownTable(text) {
+  parseMarkdownTable(text: string): ParsedTable | null {
     const lines = text.trim().split('\n');
     if (lines.length < 3) return null; // Need at least header, separator, and one row
 
@@ -173,7 +193,7 @@ class PetaTasClient {
     const separatorLine = lines[1].trim();
     if (!separatorLine.includes('|') || !separatorLine.includes('-')) return null;
 
-    const rows = [];
+    const rows: string[][] = [];
     for (let i = 2; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line || !line.includes('|')) continue;
@@ -192,7 +212,7 @@ class PetaTasClient {
     return { headers, rows };
   }
 
-  generateMarkdownTable(headers, rows) {
+  generateMarkdownTable(headers: string[], rows: string[][]): string {
     let markdown = '| ' + headers.join(' | ') + ' |\n';
     markdown += '|' + headers.map(() => '---').join('|') + '|\n';
     
@@ -203,7 +223,7 @@ class PetaTasClient {
     return markdown;
   }
 
-  renderTasks() {
+  renderTasks(): void {
     const emptyState = document.getElementById('empty-state');
     const taskList = document.getElementById('task-list');
     
@@ -224,7 +244,7 @@ class PetaTasClient {
     }
   }
 
-  renderTaskRow(task) {
+  renderTaskRow(task: Task): string {
     const elapsedTime = this.formatTime(task.elapsedMs);
     const isTimerRunning = this.activeTimers.has(task.id);
     
@@ -253,13 +273,13 @@ class PetaTasClient {
     `;
   }
 
-  setupTaskEventListeners() {
+  setupTaskEventListeners(): void {
     const taskList = document.getElementById('task-list');
     if (!taskList) return;
 
     // Event delegation for task operations
     taskList.addEventListener('click', (e) => {
-      const target = e.target;
+      const target = e.target as HTMLElement;
       const taskId = target.dataset.taskId;
       
       if (!taskId) return;
@@ -272,15 +292,17 @@ class PetaTasClient {
     });
 
     taskList.addEventListener('change', (e) => {
-      const target = e.target;
+      const target = e.target as HTMLInputElement;
       if (target.type === 'checkbox') {
         const taskId = target.dataset.taskId;
-        this.toggleTaskStatus(taskId);
+        if (taskId) {
+          this.toggleTaskStatus(taskId);
+        }
       }
     });
   }
 
-  async toggleTaskStatus(taskId) {
+  async toggleTaskStatus(taskId: string): Promise<void> {
     const task = this.currentTasks.find(t => t.id === taskId);
     if (!task) return;
 
@@ -296,20 +318,20 @@ class PetaTasClient {
     this.renderTasks();
   }
 
-  async deleteTask(taskId) {
+  async deleteTask(taskId: string): Promise<void> {
     this.currentTasks = this.currentTasks.filter(t => t.id !== taskId);
     await this.saveTasks();
     this.renderTasks();
     this.showToast('Task deleted', 'success');
   }
 
-  toggleTimer(taskId) {
+  toggleTimer(taskId: string): void {
     const task = this.currentTasks.find(t => t.id === taskId);
     if (!task) return;
 
     if (this.activeTimers.has(taskId)) {
       // Stop timer
-      const timer = this.activeTimers.get(taskId);
+      const timer = this.activeTimers.get(taskId)!;
       clearInterval(timer.interval);
       
       // Update elapsed time and status
@@ -321,7 +343,7 @@ class PetaTasClient {
       this.activeTimers.delete(taskId);
     } else {
       // Start timer
-      const timer = {
+      const timer: Timer = {
         startTime: Date.now(),
         interval: setInterval(() => {
           this.updateTimerDisplay(taskId);
@@ -339,7 +361,7 @@ class PetaTasClient {
     this.renderTasks();
   }
 
-  updateTimerDisplay(taskId) {
+  updateTimerDisplay(taskId: string): void {
     const timer = this.activeTimers.get(taskId);
     const task = this.currentTasks.find(t => t.id === taskId);
     
@@ -353,7 +375,7 @@ class PetaTasClient {
     }
   }
 
-  formatTime(ms) {
+  formatTime(ms: number): string {
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
@@ -361,7 +383,7 @@ class PetaTasClient {
     return `${hours.toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
   }
 
-  showToast(message, type = 'success') {
+  showToast(message: string, type: 'success' | 'error' | 'warning' = 'success'): void {
     const toastContainer = document.getElementById('toast-container');
     if (!toastContainer) return;
 

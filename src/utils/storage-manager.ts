@@ -155,7 +155,7 @@ export class StorageManager {
   }
 
   // Estimate data size (approximate)
-  private estimateDataSize(data: any): number {
+  private estimateDataSize(data: Record<string, unknown>): number {
     try {
       return new Blob([JSON.stringify(data)]).size;
     } catch (error) {

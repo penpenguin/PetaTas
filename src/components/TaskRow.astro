@@ -80,21 +80,19 @@ const elapsedTime = formatTime(task.elapsedMs);
   </div>
 </div>
 
-<script define:vars={{ task }}>
+<script is:inline define:vars={{ task }}>
   // Client-side functionality for individual task row
   class TaskRowManager {
-    private taskId: string;
-    private isEditing: boolean = false;
-    
-    constructor(taskId: string) {
+    constructor(taskId) {
       this.taskId = taskId;
+      this.isEditing = false;
       this.setupEventListeners();
     }
 
-    private setupEventListeners() {
+    setupEventListeners() {
       // Task name editing
       const nameSpan = document.getElementById(`name-${this.taskId}`);
-      const nameInput = document.getElementById(`input-${this.taskId}`) as HTMLInputElement;
+      const nameInput = document.getElementById(`input-${this.taskId}`);
       
       if (nameSpan && nameInput) {
         nameSpan.addEventListener('dblclick', () => {
@@ -116,10 +114,10 @@ const elapsedTime = formatTime(task.elapsedMs);
       }
 
       // Checkbox toggle
-      const checkbox = document.getElementById(`checkbox-${this.taskId}`) as HTMLInputElement;
+      const checkbox = document.getElementById(`checkbox-${this.taskId}`);
       if (checkbox) {
         checkbox.addEventListener('change', (e) => {
-          const target = e.target as HTMLInputElement;
+          const target = e.target;
           this.handleTaskToggle(target.checked);
         });
       }
@@ -128,7 +126,7 @@ const elapsedTime = formatTime(task.elapsedMs);
       const buttons = document.querySelectorAll(`button[data-task-id="${this.taskId}"]`);
       buttons.forEach(button => {
         button.addEventListener('click', (e) => {
-          const target = e.target as HTMLButtonElement;
+          const target = e.target;
           const action = target.dataset.action;
           
           switch (action) {
@@ -143,7 +141,7 @@ const elapsedTime = formatTime(task.elapsedMs);
       });
     }
 
-    private enterEditMode(nameSpan: HTMLElement, nameInput: HTMLInputElement) {
+    enterEditMode(nameSpan, nameInput) {
       if (this.isEditing) return;
       
       this.isEditing = true;
@@ -153,7 +151,7 @@ const elapsedTime = formatTime(task.elapsedMs);
       nameInput.select();
     }
 
-    private exitEditMode(nameSpan: HTMLElement, nameInput: HTMLInputElement) {
+    exitEditMode(nameSpan, nameInput) {
       if (!this.isEditing) return;
       
       this.isEditing = false;
@@ -168,7 +166,7 @@ const elapsedTime = formatTime(task.elapsedMs);
       }
     }
 
-    private handleTaskToggle(completed: boolean) {
+    handleTaskToggle(completed) {
       // Emit custom event
       const event = new CustomEvent('taskToggle', {
         detail: { taskId: this.taskId, completed }
@@ -176,7 +174,7 @@ const elapsedTime = formatTime(task.elapsedMs);
       document.dispatchEvent(event);
     }
 
-    private handleTaskDelete() {
+    handleTaskDelete() {
       // Emit custom event
       const event = new CustomEvent('taskDelete', {
         detail: { taskId: this.taskId }
@@ -184,7 +182,7 @@ const elapsedTime = formatTime(task.elapsedMs);
       document.dispatchEvent(event);
     }
 
-    private handleTimerToggle() {
+    handleTimerToggle() {
       // Emit custom event
       const event = new CustomEvent('timerToggle', {
         detail: { taskId: this.taskId }
@@ -192,7 +190,7 @@ const elapsedTime = formatTime(task.elapsedMs);
       document.dispatchEvent(event);
     }
 
-    private handleTaskEdit(updates: Partial<Task>) {
+    handleTaskEdit(updates) {
       // Emit custom event
       const event = new CustomEvent('taskEdit', {
         detail: { taskId: this.taskId, updates }
@@ -201,7 +199,7 @@ const elapsedTime = formatTime(task.elapsedMs);
     }
 
     // Update timer display
-    public updateTimer(elapsedMs: number) {
+    updateTimer(elapsedMs) {
       const timerDisplay = document.getElementById(`timer-${this.taskId}`);
       if (timerDisplay) {
         timerDisplay.textContent = this.formatTime(elapsedMs);
@@ -209,7 +207,7 @@ const elapsedTime = formatTime(task.elapsedMs);
     }
 
     // Update timer button state
-    public updateTimerButton(isRunning: boolean) {
+    updateTimerButton(isRunning) {
       const timerButton = document.querySelector(`button[data-task-id="${this.taskId}"][data-action="timer"]`);
       if (timerButton) {
         timerButton.textContent = isRunning ? '⏸️' : '▶️';
@@ -217,7 +215,7 @@ const elapsedTime = formatTime(task.elapsedMs);
       }
     }
 
-    private formatTime(ms: number): string {
+    formatTime(ms) {
       const seconds = Math.floor(ms / 1000);
       const minutes = Math.floor(seconds / 60);
       const hours = Math.floor(minutes / 60);
@@ -230,10 +228,10 @@ const elapsedTime = formatTime(task.elapsedMs);
   const taskRowManager = new TaskRowManager(task.id);
 
   // Store reference for global access
-  if (!(window as any).taskRowManagers) {
-    (window as any).taskRowManagers = new Map();
+  if (!window.taskRowManagers) {
+    window.taskRowManagers = new Map();
   }
-  (window as any).taskRowManagers.set(task.id, taskRowManager);
+  window.taskRowManagers.set(task.id, taskRowManager);
 </script>
 
 <style>

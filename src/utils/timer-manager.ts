@@ -14,7 +14,7 @@ export interface TimerEventMap {
 export class TimerManager {
   private timers: Map<string, NodeJS.Timeout> = new Map();
   private timerStates: Map<string, TimerState> = new Map();
-  private eventListeners: Map<keyof TimerEventMap, Set<(...args: any[]) => void>> = new Map();
+  private eventListeners: Map<keyof TimerEventMap, Set<(...args: unknown[]) => void>> = new Map();
   private storageManager: StorageManager;
 
   constructor(storageManager?: StorageManager) {
@@ -198,14 +198,14 @@ export class TimerManager {
   on<K extends keyof TimerEventMap>(event: K, listener: TimerEventMap[K]): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
-      listeners.add(listener);
+      listeners.add(listener as (...args: unknown[]) => void);
     }
   }
 
   off<K extends keyof TimerEventMap>(event: K, listener: TimerEventMap[K]): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
-      listeners.delete(listener);
+      listeners.delete(listener as (...args: unknown[]) => void);
     }
   }
 
@@ -214,7 +214,7 @@ export class TimerManager {
     if (listeners) {
       listeners.forEach(listener => {
         try {
-          (listener as any)(...args);
+          listener(...args);
         } catch (error) {
           console.error('Error in timer event listener:', error);
         }

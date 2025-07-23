@@ -12,27 +12,48 @@ export default defineConfig({
   vite: {
     plugins: [
       {
-        name: 'service-worker-build',
+        name: 'client-scripts-build',
         writeBundle() {
-          // Build service worker separately
+          // Build client scripts separately
           return import('vite').then(({ build }) => {
-            return build({
-              build: {
-                lib: {
-                  entry: './src/service-worker.ts',
-                  name: 'ServiceWorker',
-                  fileName: 'service-worker',
-                  formats: ['iife']
-                },
-                outDir: 'dist',
-                emptyOutDir: false,
-                rollupOptions: {
-                  output: {
-                    entryFileNames: 'service-worker.js'
+            return Promise.all([
+              // Build service worker
+              build({
+                build: {
+                  lib: {
+                    entry: './src/service-worker.ts',
+                    name: 'ServiceWorker',
+                    fileName: 'service-worker',
+                    formats: ['iife']
+                  },
+                  outDir: 'dist',
+                  emptyOutDir: false,
+                  rollupOptions: {
+                    output: {
+                      entryFileNames: 'service-worker.js'
+                    }
                   }
                 }
-              }
-            });
+              }),
+              // Build panel client
+              build({
+                build: {
+                  lib: {
+                    entry: './src/panel-client.ts',
+                    name: 'PanelClient',
+                    fileName: 'panel-client',
+                    formats: ['iife']
+                  },
+                  outDir: 'dist',
+                  emptyOutDir: false,
+                  rollupOptions: {
+                    output: {
+                      entryFileNames: 'panel-client.js'
+                    }
+                  }
+                }
+              })
+            ]);
           });
         }
       }

@@ -6,7 +6,7 @@ export interface ParsedMarkdownTable {
   rows: string[][];
 }
 
-export function parseMarkdownTable(markdown: any): ParsedMarkdownTable | null {
+export function parseMarkdownTable(markdown: unknown): ParsedMarkdownTable | null {
   // Handle invalid input types
   if (markdown === null || markdown === undefined || typeof markdown !== 'string') {
     return null;

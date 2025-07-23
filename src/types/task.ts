@@ -17,22 +17,24 @@ export interface TaskData {
 }
 
 // Validation function for Task objects
-export function isValidTask(obj: any): obj is Task {
+export function isValidTask(obj: unknown): obj is Task {
+  if (obj === null || obj === undefined || typeof obj !== 'object' || Array.isArray(obj)) {
+    return false;
+  }
+  
+  const taskObj = obj as Record<string, unknown>;
+  
   return (
-    obj !== null &&
-    obj !== undefined &&
-    typeof obj === 'object' &&
-    !Array.isArray(obj) &&
-    typeof obj.id === 'string' &&
-    obj.id.length > 0 &&
-    typeof obj.name === 'string' &&
-    typeof obj.status === 'string' &&
-    ['todo', 'in-progress', 'done'].includes(obj.status) &&
-    typeof obj.notes === 'string' &&
-    typeof obj.elapsedMs === 'number' &&
-    obj.elapsedMs >= 0 &&
-    obj.createdAt instanceof Date &&
-    obj.updatedAt instanceof Date
+    typeof taskObj.id === 'string' &&
+    taskObj.id.length > 0 &&
+    typeof taskObj.name === 'string' &&
+    typeof taskObj.status === 'string' &&
+    ['todo', 'in-progress', 'done'].includes(taskObj.status) &&
+    typeof taskObj.notes === 'string' &&
+    typeof taskObj.elapsedMs === 'number' &&
+    taskObj.elapsedMs >= 0 &&
+    taskObj.createdAt instanceof Date &&
+    taskObj.updatedAt instanceof Date
   );
 }
 
@@ -85,14 +87,16 @@ export function createTask(headers: string[], row: string[]): Task {
 }
 
 // Validate TaskData structure
-export function validateTaskData(data: any): data is TaskData {
+export function validateTaskData(data: unknown): data is TaskData {
+  if (data === null || data === undefined || typeof data !== 'object' || Array.isArray(data)) {
+    return false;
+  }
+  
+  const dataObj = data as Record<string, unknown>;
+  
   return (
-    data !== null &&
-    data !== undefined &&
-    typeof data === 'object' &&
-    !Array.isArray(data) &&
-    Array.isArray(data.tasks) &&
-    data.tasks.every(isValidTask)
+    Array.isArray(dataObj.tasks) &&
+    dataObj.tasks.every(isValidTask)
   );
 }
 
