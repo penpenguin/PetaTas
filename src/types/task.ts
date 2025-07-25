@@ -10,6 +10,8 @@ export interface Task {
   elapsedMs: number;
   createdAt: Date;
   updatedAt: Date;
+  // Store additional columns from markdown table
+  additionalColumns?: Record<string, string>;
 }
 
 export interface TaskData {
@@ -24,7 +26,7 @@ export function isValidTask(obj: unknown): obj is Task {
   
   const taskObj = obj as Record<string, unknown>;
   
-  return (
+  const isBasicValid = (
     typeof taskObj.id === 'string' &&
     taskObj.id.length > 0 &&
     typeof taskObj.name === 'string' &&
@@ -36,6 +38,25 @@ export function isValidTask(obj: unknown): obj is Task {
     taskObj.createdAt instanceof Date &&
     taskObj.updatedAt instanceof Date
   );
+
+  // Check additionalColumns if present
+  if (taskObj.additionalColumns !== undefined) {
+    if (typeof taskObj.additionalColumns !== 'object' || 
+        taskObj.additionalColumns === null || 
+        Array.isArray(taskObj.additionalColumns)) {
+      return false;
+    }
+    
+    // Validate that all values in additionalColumns are strings
+    const additionalColumns = taskObj.additionalColumns as Record<string, unknown>;
+    for (const value of Object.values(additionalColumns)) {
+      if (typeof value !== 'string') {
+        return false;
+      }
+    }
+  }
+
+  return isBasicValid;
 }
 
 // Create a new task from markdown table row
@@ -48,7 +69,8 @@ export function createTask(headers: string[], row: string[]): Task {
     notes: '',
     elapsedMs: 0,
     createdAt: now,
-    updatedAt: now
+    updatedAt: now,
+    additionalColumns: {}
   };
 
   // Map headers to task properties
@@ -76,9 +98,9 @@ export function createTask(headers: string[], row: string[]): Task {
         task.notes = value;
         break;
       default:
-        // For unknown headers, add to notes if not empty
-        if (value.trim() !== '') {
-          task.notes += (task.notes ? ' | ' : '') + `${header}: ${value}`;
+        // Store all additional columns in additionalColumns
+        if (task.additionalColumns) {
+          task.additionalColumns[header] = value;
         }
     }
   });

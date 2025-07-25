@@ -1,25 +1,15 @@
 // PetaTas Chrome Extension - Client-side TypeScript
 // This file handles all client-side functionality for the side panel
 
-interface Task {
-  id: string;
-  name: string;
-  status: 'todo' | 'in-progress' | 'done';
-  notes: string;
-  elapsedMs: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import { parseMarkdownTable } from './utils/markdown-parser.js';
+import { createTask, type Task } from './types/task.js';
+
 
 interface Timer {
   startTime: number;
   interval: NodeJS.Timeout;
 }
 
-interface ParsedTable {
-  headers: string[];
-  rows: string[][];
-}
 
 class PetaTasClient {
   private currentTasks: Task[] = [];
@@ -76,11 +66,11 @@ class PetaTasClient {
       const result = await chrome.storage.sync.get('tasks');
       this.currentTasks = result.tasks || [];
       
-      // Convert date strings back to Date objects
+      // Convert date strings back to Date objects safely
       this.currentTasks = this.currentTasks.map(task => ({
         ...task,
-        createdAt: new Date(task.createdAt),
-        updatedAt: new Date(task.updatedAt)
+        createdAt: task.createdAt instanceof Date ? task.createdAt : new Date(task.createdAt),
+        updatedAt: task.updatedAt instanceof Date ? task.updatedAt : new Date(task.updatedAt)
       }));
     } catch (error) {
       console.error('Failed to load tasks:', error);
@@ -90,6 +80,14 @@ class PetaTasClient {
 
   async saveTasks(): Promise<void> {
     try {
+      // Check storage size before saving (Chrome sync storage has ~100KB limit)
+      const dataSize = JSON.stringify(this.currentTasks).length;
+      const maxSize = 90 * 1024; // 90KB to leave some buffer
+      
+      if (dataSize > maxSize) {
+        throw new Error(`Tasks data too large (${Math.round(dataSize/1024)}KB). Maximum allowed is ${Math.round(maxSize/1024)}KB. Consider removing some tasks.`);
+      }
+      
       await chrome.storage.sync.set({ tasks: this.currentTasks });
     } catch (error) {
       console.error('Failed to save tasks:', error);
@@ -111,28 +109,47 @@ class PetaTasClient {
         return;
       }
       
-      const parsedTable = this.parseMarkdownTable(clipboardText);
+      const parsedTable = parseMarkdownTable(clipboardText);
       
       if (!parsedTable) {
         this.showToast('Invalid Markdown table format. Please copy a valid table.', 'error');
         return;
       }
 
-      // Convert to tasks
-      const newTasks: Task[] = parsedTable.rows.map(row => ({
-        id: `task_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
-        name: row[0] || 'Unnamed Task',
-        status: (row[1]?.toLowerCase() === 'done' ? 'done' : 'todo') as Task['status'],
-        notes: row[2] || '',
-        elapsedMs: 0,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }));
+      // Show confirmation dialog if there are existing tasks
+      if (this.currentTasks.length > 0) {
+        const confirmed = confirm(
+          `This will replace all ${this.currentTasks.length} existing tasks with ${parsedTable.rows.length} new tasks from the clipboard.\n\nAre you sure you want to continue?`
+        );
+        if (!confirmed) {
+          this.showToast('Import cancelled', 'warning');
+          return;
+        }
+      }
 
+      // Convert to tasks using the createTask function
+      const newTasks: Task[] = parsedTable.rows.map(row => 
+        createTask(parsedTable.headers, row)
+      );
+
+      // Stop all active timers before replacing tasks
+      this.activeTimers.forEach((timer) => {
+        clearInterval(timer.interval);
+      });
+      this.activeTimers.clear();
+
+      // Replace all tasks with new ones (delete and insert)
       this.currentTasks = newTasks;
-      await this.saveTasks();
-      this.renderTasks();
-      this.showToast(`Imported ${newTasks.length} tasks`, 'success');
+      try {
+        await this.saveTasks();
+        this.renderTasks();
+        this.showToast(`Replaced all tasks with ${newTasks.length} imported tasks`, 'success');
+      } catch (saveError) {
+        // If save fails, we need to provide recovery options
+        this.showToast(`Failed to save tasks: ${(saveError as Error).message}`, 'error');
+        // Don't restore the old tasks - let user know they need to reduce data or try again
+        throw saveError;
+      }
     } catch (error) {
       console.error('Failed to paste:', error);
       if ((error as Error).name === 'NotAllowedError') {
@@ -155,12 +172,34 @@ class PetaTasClient {
         throw new Error('Clipboard API not available');
       }
 
-      const headers = ['Name', 'Status', 'Notes'];
-      const rows = this.currentTasks.map(task => [
-        task.name,
-        task.status,
-        task.notes
-      ]);
+      // Collect all unique headers from all tasks
+      const allHeaders = new Set(['Name', 'Status', 'Notes']);
+      this.currentTasks.forEach(task => {
+        if (task.additionalColumns) {
+          Object.keys(task.additionalColumns).forEach(header => allHeaders.add(header));
+        }
+      });
+      const headers = Array.from(allHeaders);
+
+      const rows = this.currentTasks.map(task => {
+        const row: string[] = [];
+        headers.forEach(header => {
+          switch (header) {
+            case 'Name':
+              row.push(task.name);
+              break;
+            case 'Status':
+              row.push(task.status);
+              break;
+            case 'Notes':
+              row.push(task.notes);
+              break;
+            default:
+              row.push(task.additionalColumns?.[header] || '');
+          }
+        });
+        return row;
+      });
 
       const markdown = this.generateMarkdownTable(headers, rows);
       await navigator.clipboard.writeText(markdown);
@@ -175,42 +214,6 @@ class PetaTasClient {
     }
   }
 
-  parseMarkdownTable(text: string): ParsedTable | null {
-    const lines = text.trim().split('\n');
-    if (lines.length < 3) return null; // Need at least header, separator, and one row
-
-    // Parse header
-    const headerLine = lines[0].trim();
-    if (!headerLine.includes('|')) return null;
-    
-    const headers = headerLine.split('|')
-      .map(h => h.trim())
-      .filter(h => h !== '');
-
-    if (headers.length === 0) return null;
-
-    // Check separator line
-    const separatorLine = lines[1].trim();
-    if (!separatorLine.includes('|') || !separatorLine.includes('-')) return null;
-
-    const rows: string[][] = [];
-    for (let i = 2; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line || !line.includes('|')) continue;
-      
-      const row = line.split('|')
-        .map(cell => cell.trim())
-        .filter(cell => cell !== '');
-      
-      if (row.length > 0) {
-        rows.push(row);
-      }
-    }
-
-    if (rows.length === 0) return null;
-
-    return { headers, rows };
-  }
 
   generateMarkdownTable(headers: string[], rows: string[][]): string {
     let markdown = '| ' + headers.join(' | ') + ' |\n';
@@ -244,28 +247,50 @@ class PetaTasClient {
     }
   }
 
+  // Helper function to safely escape HTML
+  private escapeHtml(unsafe: string): string {
+    return unsafe
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   renderTaskRow(task: Task): string {
     const elapsedTime = this.formatTime(task.elapsedMs);
     const isTimerRunning = this.activeTimers.has(task.id);
     
+    // Render additional columns if they exist - with HTML escaping
+    const additionalColumnsHtml = task.additionalColumns 
+      ? Object.entries(task.additionalColumns)
+          .filter(([, value]) => value.trim() !== '')
+          .map(([header, value]) => `
+            <div class="text-xs text-gray-600 bg-gray-100 rounded px-2 py-1 inline-block mr-1 mb-1">
+              <strong>${this.escapeHtml(header)}:</strong> ${this.escapeHtml(value)}
+            </div>
+          `).join('')
+      : '';
+    
     return `
-      <div class="list-row" data-testid="task-${task.id}" data-status="${task.status}">
+      <div class="list-row" data-testid="task-${this.escapeHtml(task.id)}" data-status="${this.escapeHtml(task.status)}">
         <input 
           type="checkbox" 
           class="checkbox" 
           ${task.status === 'done' ? 'checked' : ''}
-          data-task-id="${task.id}"
+          data-task-id="${this.escapeHtml(task.id)}"
         />
         <div class="list-col-grow">
-          <span class="task-name">${task.name}</span>
-          ${task.notes ? `<div class="text-sm text-gray-500">${task.notes}</div>` : ''}
+          <span class="task-name">${this.escapeHtml(task.name)}</span>
+          ${task.notes ? `<div class="text-sm text-gray-500">${this.escapeHtml(task.notes)}</div>` : ''}
+          ${additionalColumnsHtml ? `<div class="mt-1">${additionalColumnsHtml}</div>` : ''}
         </div>
         <div class="timer-display ${isTimerRunning ? 'running' : ''}">${elapsedTime}</div>
         <div class="flex gap-1">
-          <button class="btn btn-ghost btn-xs" data-task-id="${task.id}" data-action="timer">
+          <button class="btn btn-ghost btn-xs" data-task-id="${this.escapeHtml(task.id)}" data-action="timer">
             ${isTimerRunning ? '⏸️' : '▶️'}
           </button>
-          <button class="btn btn-ghost btn-xs" data-task-id="${task.id}" data-action="delete">
+          <button class="btn btn-ghost btn-xs" data-task-id="${this.escapeHtml(task.id)}" data-action="delete">
             🗑️
           </button>
         </div>
