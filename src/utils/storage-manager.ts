@@ -22,30 +22,30 @@ export class StorageManager {
   private static readonly STORAGE_KEY_TIMER_PREFIX = 'timer_';
   private static readonly MAX_STORAGE_BYTES = 100 * 1024; // 100KB chrome.storage.sync limit
   // private static readonly MAX_ITEM_BYTES = 8 * 1024; // 8KB per item limit - reserved for future use
+  
+  // Write operation throttling to prevent quota exceeded errors
+  private static readonly WRITE_THROTTLE_MS = 2000; // 2 seconds between writes
+  private static readonly MAX_WRITES_PER_MINUTE = 120; // Chrome limit
+  private writeQueue: Map<string, { data: any; resolve: (value: void) => void; reject: (error: any) => void; timestamp: number }> = new Map();
+  private writeHistory: number[] = [];
+  private throttleTimer: NodeJS.Timeout | null = null;
 
-  // Save tasks to chrome.storage.sync
+  // Save tasks to chrome.storage.sync with throttling
   async saveTasks(tasks: Task[]): Promise<void> {
-    try {
-      const data = { tasks };
-      
-      // Validate data before saving
-      if (!validateTaskData(data)) {
-        throw new Error('Invalid task data structure');
-      }
-
-      // Check storage quota
-      const dataSize = this.estimateDataSize(data);
-      if (dataSize > StorageManager.MAX_STORAGE_BYTES) {
-        throw new Error(`Data size (${dataSize} bytes) exceeds storage limit`);
-      }
-
-      await chrome.storage.sync.set({
-        [StorageManager.STORAGE_KEY_TASKS]: tasks,
-      });
-    } catch (error) {
-      console.error('Failed to save tasks:', error);
-      throw error;
+    const data = { tasks };
+    
+    // Validate data before saving
+    if (!validateTaskData(data)) {
+      throw new Error('Invalid task data structure');
     }
+
+    // Check storage quota
+    const dataSize = this.estimateDataSize(data);
+    if (dataSize > StorageManager.MAX_STORAGE_BYTES) {
+      throw new Error(`Data size (${dataSize} bytes) exceeds storage limit`);
+    }
+
+    return this.throttledWrite(StorageManager.STORAGE_KEY_TASKS, tasks);
   }
 
   // Load tasks from chrome.storage.sync
@@ -77,18 +77,10 @@ export class StorageManager {
     }
   }
 
-  // Save timer state for a specific task
+  // Save timer state for a specific task with throttling
   async saveTimerState(timerState: TimerState): Promise<void> {
-    try {
-      const key = `${StorageManager.STORAGE_KEY_TIMER_PREFIX}${timerState.taskId}`;
-      
-      await chrome.storage.sync.set({
-        [key]: timerState,
-      });
-    } catch (error) {
-      console.error('Failed to save timer state:', error);
-      throw error;
-    }
+    const key = `${StorageManager.STORAGE_KEY_TIMER_PREFIX}${timerState.taskId}`;
+    return this.throttledWrite(key, timerState);
   }
 
   // Load timer state for a specific task
@@ -168,5 +160,100 @@ export class StorageManager {
   async isStorageNearLimit(): Promise<boolean> {
     const info = await this.getStorageInfo();
     return info.percentUsed > 80; // 80% threshold
+  }
+
+  // Throttled write operation to prevent quota exceeded errors
+  private async throttledWrite(key: string, data: any): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // If there's already a pending write for this key, replace it (debounce)
+      if (this.writeQueue.has(key)) {
+        const existing = this.writeQueue.get(key)!;
+        existing.reject(new Error('Write operation replaced by newer write'));
+      }
+
+      // Add to queue
+      this.writeQueue.set(key, {
+        data,
+        resolve,
+        reject,
+        timestamp: Date.now()
+      });
+
+      // Process queue
+      this.processWriteQueue();
+    });
+  }
+
+  // Process the write queue with throttling
+  private processWriteQueue(): void {
+    if (this.throttleTimer) {
+      return; // Already processing
+    }
+
+    this.throttleTimer = setTimeout(() => {
+      this.executeWrites();
+      this.throttleTimer = null;
+      
+      // Continue processing if queue not empty
+      if (this.writeQueue.size > 0) {
+        this.processWriteQueue();
+      }
+    }, StorageManager.WRITE_THROTTLE_MS);
+  }
+
+  // Execute a batch of writes
+  private async executeWrites(): Promise<void> {
+    const now = Date.now();
+    
+    // Clean old write history (older than 1 minute)
+    this.writeHistory = this.writeHistory.filter(timestamp => 
+      now - timestamp < 60000
+    );
+
+    // Check if we're approaching rate limit
+    if (this.writeHistory.length >= StorageManager.MAX_WRITES_PER_MINUTE * 0.8) {
+      console.warn('Approaching write rate limit, delaying writes');
+      return; // Skip this batch
+    }
+
+    // Get the next batch to write (up to 10 items)
+    const entries = Array.from(this.writeQueue.entries()).slice(0, 10);
+    if (entries.length === 0) return;
+
+    // Prepare batch write
+    const batchData: Record<string, any> = {};
+    const promises: Array<{ resolve: (value: void) => void; reject: (error: any) => void }> = [];
+
+    for (const [key, item] of entries) {
+      batchData[key] = item.data;
+      promises.push({ resolve: item.resolve, reject: item.reject });
+      this.writeQueue.delete(key);
+    }
+
+    try {
+      // Execute batch write
+      await chrome.storage.sync.set(batchData);
+      
+      // Record successful write
+      this.writeHistory.push(now);
+      
+      // Resolve all promises
+      promises.forEach(p => p.resolve());
+    } catch (error) {
+      console.error('Batch write failed:', error);
+      
+      // Reject all promises
+      promises.forEach(p => p.reject(error));
+      
+      // If quota exceeded, wait longer before next attempt
+      if (error instanceof Error && (
+        error.message.includes('QUOTA_BYTES_PER_ITEM') ||
+        error.message.includes('MAX_WRITE_OPERATIONS_PER_MINUTE')
+      )) {
+        console.warn('Storage quota exceeded, increasing throttle delay');
+        setTimeout(() => this.processWriteQueue(), StorageManager.WRITE_THROTTLE_MS * 3);
+        return;
+      }
+    }
   }
 }

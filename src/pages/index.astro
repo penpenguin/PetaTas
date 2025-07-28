@@ -1,5 +1,6 @@
 ---
 // Panel.astro - Main Chrome Extension Side Panel
+import "/src/styles/main.css"
 
 export interface Props {
   title?: string;
@@ -14,7 +15,6 @@ const { title = 'PetaTas' } = Astro.props;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PetaTas - Task Manager</title>
-    <link rel="stylesheet" href="/src/styles/main.css" />
   </head>
   <body>
     <div id="panel-root">

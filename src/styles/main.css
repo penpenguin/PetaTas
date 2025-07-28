@@ -126,8 +126,7 @@ body {
     @apply flex-col gap-2 p-2;
   }
   
-  .navbar .flex-1,
-  .navbar .flex-none {
+  .navbar .flex-1 {
     @apply w-full;
   }
   
