@@ -25,11 +25,15 @@ body {
 }
 
 .navbar {
-  @apply flex-none border-b border-base-300;
+  @apply flex-shrink-0 border-b border-base-300;
+  min-height: 4rem; /* Ensure consistent navbar height */
 }
 
 .task-list-container {
   @apply flex-1 overflow-y-auto;
+  min-height: 0; /* Allow flex item to shrink below content size */
+  /* Use flex-basis instead of height for better flex behavior */
+  flex-basis: 0;
 }
 
 .list {
@@ -132,6 +136,7 @@ body {
 
 .container {
   @apply max-w-none w-full;
+  /* Remove height: 100% to let flexbox handle it */
 }
 
 /* Responsive design */
