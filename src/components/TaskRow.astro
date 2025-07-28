@@ -113,14 +113,7 @@ const elapsedTime = formatTime(task.elapsedMs);
         });
       }
 
-      // Checkbox toggle
-      const checkbox = document.getElementById(`checkbox-${this.taskId}`);
-      if (checkbox) {
-        checkbox.addEventListener('change', (e) => {
-          const target = e.target;
-          this.handleTaskToggle(target.checked);
-        });
-      }
+      // Checkbox toggle - handled by TaskList document listener to avoid duplication
 
       // Button actions
       const buttons = document.querySelectorAll(`button[data-task-id="${this.taskId}"]`);

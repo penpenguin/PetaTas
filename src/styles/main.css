@@ -40,12 +40,26 @@ body {
   @apply flex items-center gap-3 p-3 bg-base-200 rounded-lg hover:bg-base-300 transition-colors;
 }
 
+/* Status-based styling for instant visual feedback */
+.list-row.status-done {
+  @apply bg-success/10 border-l-4 border-success;
+}
+
+.list-row.status-in-progress {
+  @apply bg-warning/10 border-l-4 border-warning;
+}
+
+.list-row.status-todo {
+  @apply bg-base-200;
+}
+
 .list-col-grow {
   @apply flex-1 min-w-0;
 }
 
 .task-name {
   @apply font-medium truncate;
+  transition: text-decoration 0.2s ease, opacity 0.2s ease;
 }
 
 .timer-display {

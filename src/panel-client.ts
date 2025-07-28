@@ -41,6 +41,7 @@ class PetaTasClient {
       
       // Setup event listeners
       this.setupEventListeners();
+      this.setupTaskEventListeners();
       
       console.log('PetaTas initialized successfully');
       this.showToast('PetaTas loaded successfully', 'success');
@@ -243,10 +244,55 @@ class PetaTasClient {
 
     if (taskList) {
       taskList.innerHTML = this.currentTasks.map(task => this.renderTaskRow(task)).join('');
-      
-      // Setup task event listeners
-      this.setupTaskEventListeners();
+      // Event listeners are set up once in initialize() - no need to re-add them
     }
+  }
+
+  updateSingleTaskRow(taskId: string): void {
+    const task = this.currentTasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const existingRow = document.querySelector(`[data-testid="task-${taskId}"]`);
+    if (existingRow) {
+      // Update only the specific task row to avoid full re-render
+      existingRow.outerHTML = this.renderTaskRow(task);
+    } else {
+      // Fallback to full render if row not found
+      this.renderTasks();
+    }
+  }
+
+  updateTaskRowVisualState(taskId: string, status: string): void {
+    const taskRow = document.querySelector(`[data-testid="task-${taskId}"]`) as HTMLElement;
+    if (!taskRow) return;
+
+    // Update data-status attribute for CSS styling
+    taskRow.setAttribute('data-status', status);
+
+    // Update task name styling (strikethrough for completed tasks)
+    const taskName = taskRow.querySelector('.task-name') as HTMLElement;
+    if (taskName) {
+      if (status === 'done') {
+        taskName.style.textDecoration = 'line-through';
+        taskName.style.opacity = '0.6';
+      } else {
+        taskName.style.textDecoration = 'none';
+        taskName.style.opacity = '1';
+      }
+    }
+
+    // Update row background based on status
+    taskRow.classList.remove('status-todo', 'status-done', 'status-in-progress');
+    taskRow.classList.add(`status-${status}`);
+  }
+
+  updateTimerButtonState(taskId: string, isRunning: boolean): void {
+    const timerButton = document.querySelector(`button[data-task-id="${taskId}"][data-action="timer"]`) as HTMLButtonElement;
+    if (!timerButton) return;
+
+    // Update button text and title
+    timerButton.textContent = isRunning ? '⏸️' : '▶️';
+    timerButton.setAttribute('title', isRunning ? 'Pause timer' : 'Start timer');
   }
 
   // Helper function to safely escape HTML
@@ -323,47 +369,66 @@ class PetaTasClient {
       if (target.type === 'checkbox') {
         const taskId = target.dataset.taskId;
         if (taskId) {
-          this.toggleTaskStatus(taskId);
+          this.toggleTaskStatus(taskId, target.checked);
         }
       }
     });
   }
 
-  async toggleTaskStatus(taskId: string): Promise<void> {
+  async toggleTaskStatus(taskId: string, checked: boolean): Promise<void> {
     const task = this.currentTasks.find(t => t.id === taskId);
     if (!task) return;
+
+    // Validate DOM state matches expected internal state
+    const expectedChecked = task.status === 'done';
+    if (checked === expectedChecked) {
+      console.warn(`State sync issue: checkbox is ${checked} but task status is ${task.status}. Skipping toggle.`);
+      return;
+    }
 
     // Store previous state in case we need to revert
     const previousStatus = task.status;
     const previousUpdatedAt = task.updatedAt;
 
-    try {
-      // If task is currently running timer, stop it when marking as done
-      if (task.status !== 'done' && this.activeTimers.has(taskId)) {
-        this.toggleTimer(taskId);
-      }
+    // Set status based on actual checkbox state (optimistic update)
+    const newStatus = checked ? 'done' : 'todo';
+    
+    // If task is currently running timer, stop it when marking as done
+    if (newStatus === 'done' && this.activeTimers.has(taskId)) {
+      this.toggleTimer(taskId);
+    }
 
-      task.status = task.status === 'done' ? 'todo' : 'done';
-      task.updatedAt = new Date();
-      
-      await this.saveTasks();
-      this.renderTasks();
-    } catch (error) {
+    task.status = newStatus;
+    task.updatedAt = new Date();
+    
+    // Apply visual changes immediately for instant feedback
+    this.updateTaskRowVisualState(taskId, newStatus);
+
+    // Save to storage in background (non-blocking)
+    this.saveTasks().catch(error => {
       // Handle "replaced by newer write" gracefully - this is expected behavior
       if (error instanceof Error && error.message.includes('Write operation replaced by newer write')) {
-        // Don't revert state - the newer write will have the correct state
         console.log('Task status change was superseded by a newer write operation');
         return;
       }
       
       // Revert the task state if save failed for other reasons
+      console.error('Failed to save task status, reverting state:', error);
       task.status = previousStatus;
       task.updatedAt = previousUpdatedAt;
-      this.renderTasks(); // Re-render to show correct state
       
-      // The error message is already handled in saveTasks()
-      console.error('Failed to toggle task status, reverting state:', error);
-    }
+      // Revert visual state
+      this.updateTaskRowVisualState(taskId, previousStatus);
+      
+      // Revert checkbox state in DOM
+      const checkbox = document.querySelector(`input[data-task-id="${taskId}"]`) as HTMLInputElement;
+      if (checkbox) {
+        checkbox.checked = previousStatus === 'done';
+      }
+      
+      // Show error message to user
+      this.showToast('Failed to save task change. Please try again.', 'error');
+    });
   }
 
   async deleteTask(taskId: string): Promise<void> {
@@ -386,7 +451,15 @@ class PetaTasClient {
       task.elapsedMs += Date.now() - timer.startTime;
       task.status = task.status === 'done' ? 'done' : 'todo';
       task.updatedAt = new Date();
-      this.saveTasks();
+      
+      // Update visual state immediately
+      this.updateTaskRowVisualState(taskId, task.status);
+      this.updateTimerButtonState(taskId, false);
+      
+      // Save in background
+      this.saveTasks().catch(error => {
+        console.error('Failed to save timer state:', error);
+      });
       
       this.activeTimers.delete(taskId);
     } else {
@@ -401,12 +474,18 @@ class PetaTasClient {
       // Update task status to in-progress
       task.status = 'in-progress';
       task.updatedAt = new Date();
-      this.saveTasks();
+      
+      // Update visual state immediately
+      this.updateTaskRowVisualState(taskId, 'in-progress');
+      this.updateTimerButtonState(taskId, true);
+      
+      // Save in background
+      this.saveTasks().catch(error => {
+        console.error('Failed to save timer state:', error);
+      });
       
       this.activeTimers.set(taskId, timer);
     }
-    
-    this.renderTasks();
   }
 
   updateTimerDisplay(taskId: string): void {
