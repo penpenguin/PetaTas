@@ -3,6 +3,7 @@
 
 import { parseMarkdownTable } from './utils/markdown-parser.js';
 import { createTask, type Task } from './types/task.js';
+import { StorageManager } from './utils/storage-manager.js';
 
 
 interface Timer {
@@ -14,6 +15,7 @@ interface Timer {
 class PetaTasClient {
   private currentTasks: Task[] = [];
   private activeTimers = new Map<string, Timer>();
+  private storageManager = new StorageManager();
   
   constructor() {
     // Initialize when DOM is ready
@@ -63,15 +65,7 @@ class PetaTasClient {
 
   async loadTasks(): Promise<void> {
     try {
-      const result = await chrome.storage.sync.get('tasks');
-      this.currentTasks = result.tasks || [];
-      
-      // Convert date strings back to Date objects safely
-      this.currentTasks = this.currentTasks.map(task => ({
-        ...task,
-        createdAt: task.createdAt instanceof Date ? task.createdAt : new Date(task.createdAt),
-        updatedAt: task.updatedAt instanceof Date ? task.updatedAt : new Date(task.updatedAt)
-      }));
+      this.currentTasks = await this.storageManager.loadTasks();
     } catch (error) {
       console.error('Failed to load tasks:', error);
       this.currentTasks = [];
@@ -80,17 +74,25 @@ class PetaTasClient {
 
   async saveTasks(): Promise<void> {
     try {
-      // Check storage size before saving (Chrome sync storage has ~100KB limit)
-      const dataSize = JSON.stringify(this.currentTasks).length;
-      const maxSize = 90 * 1024; // 90KB to leave some buffer
-      
-      if (dataSize > maxSize) {
-        throw new Error(`Tasks data too large (${Math.round(dataSize/1024)}KB). Maximum allowed is ${Math.round(maxSize/1024)}KB. Consider removing some tasks.`);
-      }
-      
-      await chrome.storage.sync.set({ tasks: this.currentTasks });
+      await this.storageManager.saveTasks(this.currentTasks);
     } catch (error) {
       console.error('Failed to save tasks:', error);
+      
+      // Show user-friendly error messages for quota issues
+      if (error instanceof Error) {
+        if (error.message.includes('MAX_WRITE_OPERATIONS_PER_MINUTE')) {
+          this.showToast('Too many changes too quickly. Please wait a moment before making more changes.', 'warning');
+          return; // Don't re-throw for quota errors - they're handled by throttling
+        } else if (error.message.includes('QUOTA_BYTES_PER_ITEM') || error.message.includes('Data size')) {
+          this.showToast('Too much task data. Please delete some tasks to continue.', 'error');
+        } else if (error.message.includes('Write operation replaced by newer write')) {
+          // This is expected behavior when multiple saves happen quickly - don't show error
+          return; // Don't re-throw as this is normal throttling behavior
+        } else {
+          this.showToast('Failed to save tasks. Please try again.', 'error');
+        }
+      }
+      
       throw error;
     }
   }
@@ -331,16 +333,37 @@ class PetaTasClient {
     const task = this.currentTasks.find(t => t.id === taskId);
     if (!task) return;
 
-    // If task is currently running timer, stop it when marking as done
-    if (task.status !== 'done' && this.activeTimers.has(taskId)) {
-      this.toggleTimer(taskId);
-    }
+    // Store previous state in case we need to revert
+    const previousStatus = task.status;
+    const previousUpdatedAt = task.updatedAt;
 
-    task.status = task.status === 'done' ? 'todo' : 'done';
-    task.updatedAt = new Date();
-    
-    await this.saveTasks();
-    this.renderTasks();
+    try {
+      // If task is currently running timer, stop it when marking as done
+      if (task.status !== 'done' && this.activeTimers.has(taskId)) {
+        this.toggleTimer(taskId);
+      }
+
+      task.status = task.status === 'done' ? 'todo' : 'done';
+      task.updatedAt = new Date();
+      
+      await this.saveTasks();
+      this.renderTasks();
+    } catch (error) {
+      // Handle "replaced by newer write" gracefully - this is expected behavior
+      if (error instanceof Error && error.message.includes('Write operation replaced by newer write')) {
+        // Don't revert state - the newer write will have the correct state
+        console.log('Task status change was superseded by a newer write operation');
+        return;
+      }
+      
+      // Revert the task state if save failed for other reasons
+      task.status = previousStatus;
+      task.updatedAt = previousUpdatedAt;
+      this.renderTasks(); // Re-render to show correct state
+      
+      // The error message is already handled in saveTasks()
+      console.error('Failed to toggle task status, reverting state:', error);
+    }
   }
 
   async deleteTask(taskId: string): Promise<void> {
