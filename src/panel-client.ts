@@ -4,6 +4,8 @@
 import { parseMarkdownTable } from './utils/markdown-parser.js';
 import { createTask, type Task } from './types/task.js';
 import { StorageManager } from './utils/storage-manager.js';
+import { escapeHtml } from './utils/html-utils.js';
+import { handleStorageError, handleClipboardError, handleGeneralError } from './utils/error-handler.js';
 
 
 interface Timer {
@@ -16,6 +18,8 @@ class PetaTasClient {
   private currentTasks: Task[] = [];
   private activeTimers = new Map<string, Timer>();
   private storageManager = new StorageManager();
+  private timerUpdateBatch: Set<string> = new Set();
+  private batchUpdateTimer: NodeJS.Timeout | null = null;
   
   constructor() {
     // Initialize when DOM is ready
@@ -42,12 +46,15 @@ class PetaTasClient {
       // Setup event listeners
       this.setupEventListeners();
       this.setupTaskEventListeners();
+      this.setupErrorNotificationListener();
       
       console.log('PetaTas initialized successfully');
       this.showToast('PetaTas loaded successfully', 'success');
     } catch (error) {
-      console.error('Failed to initialize PetaTas:', error);
-      this.showToast(`Failed to initialize app: ${(error as Error).message}`, 'error');
+      handleGeneralError(error, 'critical', { 
+        module: 'PetaTasClient', 
+        operation: 'initialize'
+      }, `Failed to initialize app: ${(error as Error).message}`);
     }
   }
 
@@ -77,24 +84,16 @@ class PetaTasClient {
     try {
       await this.storageManager.saveTasks(this.currentTasks);
     } catch (error) {
-      console.error('Failed to save tasks:', error);
+      handleStorageError(error, { 
+        module: 'PetaTasClient', 
+        operation: 'saveTasks',
+        additionalData: { tasksCount: this.currentTasks.length }
+      });
       
-      // Show user-friendly error messages for quota issues
-      if (error instanceof Error) {
-        if (error.message.includes('MAX_WRITE_OPERATIONS_PER_MINUTE')) {
-          this.showToast('Too many changes too quickly. Please wait a moment before making more changes.', 'warning');
-          return; // Don't re-throw for quota errors - they're handled by throttling
-        } else if (error.message.includes('QUOTA_BYTES_PER_ITEM') || error.message.includes('Data size')) {
-          this.showToast('Too much task data. Please delete some tasks to continue.', 'error');
-        } else if (error.message.includes('Write operation replaced by newer write')) {
-          // This is expected behavior when multiple saves happen quickly - don't show error
-          return; // Don't re-throw as this is normal throttling behavior
-        } else {
-          this.showToast('Failed to save tasks. Please try again.', 'error');
-        }
+      // Re-throw for caller handling if not a throttling error
+      if (error instanceof Error && !error.message.includes('Write operation replaced by newer write')) {
+        throw error;
       }
-      
-      throw error;
     }
   }
 
@@ -154,12 +153,11 @@ class PetaTasClient {
         throw saveError;
       }
     } catch (error) {
-      console.error('Failed to paste:', error);
-      if ((error as Error).name === 'NotAllowedError') {
-        this.showToast('Clipboard access denied. Please allow clipboard permissions.', 'error');
-      } else {
-        this.showToast(`Failed to paste from clipboard: ${(error as Error).message}`, 'error');
-      }
+      handleClipboardError(error, { 
+        module: 'PetaTasClient', 
+        operation: 'handlePasteClick',
+        additionalData: { tasksCount: this.currentTasks.length }
+      }, 'read');
     }
   }
 
@@ -208,12 +206,11 @@ class PetaTasClient {
       await navigator.clipboard.writeText(markdown);
       this.showToast(`Copied ${this.currentTasks.length} tasks to clipboard`, 'success');
     } catch (error) {
-      console.error('Failed to export:', error);
-      if ((error as Error).name === 'NotAllowedError') {
-        this.showToast('Clipboard access denied. Please allow clipboard permissions.', 'error');
-      } else {
-        this.showToast(`Failed to copy to clipboard: ${(error as Error).message}`, 'error');
-      }
+      handleClipboardError(error, { 
+        module: 'PetaTasClient', 
+        operation: 'handleExportClick',
+        additionalData: { tasksCount: this.currentTasks.length }
+      }, 'write');
     }
   }
 
@@ -243,9 +240,72 @@ class PetaTasClient {
     taskList?.classList.remove('hidden');
 
     if (taskList) {
-      taskList.innerHTML = this.currentTasks.map(task => this.renderTaskRow(task)).join('');
-      // Event listeners are set up once in initialize() - no need to re-add them
+      this.updateTaskListDiff(taskList);
     }
+  }
+
+  private updateTaskListDiff(taskList: HTMLElement): void {
+    const existingRows = Array.from(taskList.querySelectorAll('[data-testid^="task-"]'));
+    const currentTaskIds = new Set(this.currentTasks.map(task => task.id));
+
+    // Remove rows for tasks that no longer exist
+    existingRows.forEach(row => {
+      const taskId = row.getAttribute('data-testid')?.replace('task-', '');
+      if (taskId && !currentTaskIds.has(taskId)) {
+        row.remove();
+      }
+    });
+
+    // Update or add rows for current tasks
+    this.currentTasks.forEach((task, index) => {
+      const existingRow = taskList.querySelector(`[data-testid="task-${task.id}"]`);
+      const newRowHtml = this.renderTaskRow(task);
+
+      if (existingRow) {
+        // Check if the task data has changed by comparing key attributes
+        if (this.hasTaskChanged(existingRow, task)) {
+          existingRow.outerHTML = newRowHtml;
+        }
+        // Ensure correct position
+        const currentPosition = Array.from(taskList.children).indexOf(existingRow);
+        if (currentPosition !== index) {
+          const targetPosition = taskList.children[index];
+          if (targetPosition) {
+            taskList.insertBefore(existingRow, targetPosition);
+          } else {
+            taskList.appendChild(existingRow);
+          }
+        }
+      } else {
+        // Add new task row
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = newRowHtml;
+        const newRow = tempDiv.firstElementChild;
+        if (newRow) {
+          const targetPosition = taskList.children[index];
+          if (targetPosition) {
+            taskList.insertBefore(newRow, targetPosition);
+          } else {
+            taskList.appendChild(newRow);
+          }
+        }
+      }
+    });
+  }
+
+  private hasTaskChanged(existingRow: Element, task: Task): boolean {
+    // Check key attributes that would require a re-render
+    const currentStatus = existingRow.getAttribute('data-status');
+    const currentName = existingRow.querySelector('.task-name')?.textContent;
+    const currentTimerRunning = this.activeTimers.has(task.id);
+    const currentTimerButton = existingRow.querySelector('[data-action="timer"]')?.textContent;
+    const expectedTimerButton = currentTimerRunning ? '⏸️' : '▶️';
+
+    return (
+      currentStatus !== task.status ||
+      currentName !== task.name ||
+      currentTimerButton !== expectedTimerButton
+    );
   }
 
   updateSingleTaskRow(taskId: string): void {
@@ -295,15 +355,7 @@ class PetaTasClient {
     timerButton.setAttribute('title', isRunning ? 'Pause timer' : 'Start timer');
   }
 
-  // Helper function to safely escape HTML
-  private escapeHtml(unsafe: string): string {
-    return unsafe
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
+  // Note: HTML escaping is now handled by the centralized html-utils module
 
   renderTaskRow(task: Task): string {
     const elapsedTime = this.formatTime(task.elapsedMs);
@@ -315,30 +367,30 @@ class PetaTasClient {
           .filter(([, value]) => value.trim() !== '')
           .map(([header, value]) => `
             <div class="text-xs text-gray-600 bg-gray-100 rounded px-2 py-1 inline-block mr-1 mb-1">
-              <strong>${this.escapeHtml(header)}:</strong> ${this.escapeHtml(value)}
+              <strong>${escapeHtml(header)}:</strong> ${escapeHtml(value)}
             </div>
           `).join('')
       : '';
     
     return `
-      <div class="list-row" data-testid="task-${this.escapeHtml(task.id)}" data-status="${this.escapeHtml(task.status)}">
+      <div class="list-row" data-testid="task-${escapeHtml(task.id)}" data-status="${escapeHtml(task.status)}">
         <input 
           type="checkbox" 
           class="checkbox" 
           ${task.status === 'done' ? 'checked' : ''}
-          data-task-id="${this.escapeHtml(task.id)}"
+          data-task-id="${escapeHtml(task.id)}"
         />
         <div class="list-col-grow">
-          <span class="task-name">${this.escapeHtml(task.name)}</span>
-          ${task.notes ? `<div class="text-sm text-gray-500">${this.escapeHtml(task.notes)}</div>` : ''}
+          <span class="task-name">${escapeHtml(task.name)}</span>
+          ${task.notes ? `<div class="text-sm text-gray-500">${escapeHtml(task.notes)}</div>` : ''}
           ${additionalColumnsHtml ? `<div class="mt-1">${additionalColumnsHtml}</div>` : ''}
         </div>
         <div class="timer-display ${isTimerRunning ? 'running' : ''}">${elapsedTime}</div>
         <div class="flex gap-1">
-          <button class="btn btn-ghost btn-xs" data-task-id="${this.escapeHtml(task.id)}" data-action="timer">
+          <button class="btn btn-ghost btn-xs" data-task-id="${escapeHtml(task.id)}" data-action="timer">
             ${isTimerRunning ? '⏸️' : '▶️'}
           </button>
-          <button class="btn btn-ghost btn-xs" data-task-id="${this.escapeHtml(task.id)}" data-action="delete">
+          <button class="btn btn-ghost btn-xs" data-task-id="${escapeHtml(task.id)}" data-action="delete">
             🗑️
           </button>
         </div>
@@ -467,7 +519,7 @@ class PetaTasClient {
       const timer: Timer = {
         startTime: Date.now(),
         interval: setInterval(() => {
-          this.updateTimerDisplay(taskId);
+          this.scheduleTimerUpdate(taskId);
         }, 1000)
       };
       
@@ -488,6 +540,49 @@ class PetaTasClient {
     }
   }
 
+  private scheduleTimerUpdate(taskId: string): void {
+    // Add to batch for updating
+    this.timerUpdateBatch.add(taskId);
+    
+    // Schedule batched update if not already scheduled
+    if (!this.batchUpdateTimer) {
+      this.batchUpdateTimer = setTimeout(() => {
+        this.processBatchedTimerUpdates();
+        this.batchUpdateTimer = null;
+      }, 100); // 100ms batch delay for smooth updates
+    }
+  }
+
+  private processBatchedTimerUpdates(): void {
+    // Process all timer updates in a single batch to improve performance
+    const updates: Array<{ element: Element; content: string }> = [];
+    
+    this.timerUpdateBatch.forEach(taskId => {
+      const timer = this.activeTimers.get(taskId);
+      const task = this.currentTasks.find(t => t.id === taskId);
+      
+      if (timer && task) {
+        const currentElapsed = task.elapsedMs + (Date.now() - timer.startTime);
+        const display = document.querySelector(`[data-testid="task-${taskId}"] .timer-display`);
+        
+        if (display) {
+          updates.push({
+            element: display,
+            content: this.formatTime(currentElapsed)
+          });
+        }
+      }
+    });
+    
+    // Apply all updates at once to minimize DOM reflows
+    updates.forEach(({ element, content }) => {
+      element.textContent = content;
+    });
+    
+    // Clear the batch
+    this.timerUpdateBatch.clear();
+  }
+
   updateTimerDisplay(taskId: string): void {
     const timer = this.activeTimers.get(taskId);
     const task = this.currentTasks.find(t => t.id === taskId);
@@ -500,6 +595,19 @@ class PetaTasClient {
     if (display) {
       display.textContent = this.formatTime(currentElapsed);
     }
+  }
+
+  setupErrorNotificationListener(): void {
+    document.addEventListener('error-notification', (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { message, severity } = customEvent.detail;
+      
+      // Map error severity to toast type
+      const toastType = severity === 'critical' || severity === 'high' ? 'error' : 
+                       severity === 'medium' ? 'warning' : 'success';
+      
+      this.showToast(message, toastType);
+    });
   }
 
   formatTime(ms: number): string {

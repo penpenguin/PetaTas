@@ -26,7 +26,7 @@ export class StorageManager {
   // Write operation throttling to prevent quota exceeded errors
   private static readonly WRITE_THROTTLE_MS = 2000; // 2 seconds between writes
   private static readonly MAX_WRITES_PER_MINUTE = 120; // Chrome limit
-  private writeQueue: Map<string, { data: any; resolve: (value: void) => void; reject: (error: any) => void; timestamp: number }> = new Map();
+  private writeQueue: Map<string, { data: unknown; resolve: (value: void) => void; reject: (error: Error) => void; timestamp: number }> = new Map();
   private writeHistory: number[] = [];
   private throttleTimer: NodeJS.Timeout | null = null;
 
@@ -163,7 +163,7 @@ export class StorageManager {
   }
 
   // Throttled write operation to prevent quota exceeded errors
-  private async throttledWrite(key: string, data: any): Promise<void> {
+  private async throttledWrite(key: string, data: unknown): Promise<void> {
     return new Promise((resolve, reject) => {
       // If there's already a pending write for this key, replace it (debounce)
       if (this.writeQueue.has(key)) {
@@ -221,8 +221,8 @@ export class StorageManager {
     if (entries.length === 0) return;
 
     // Prepare batch write
-    const batchData: Record<string, any> = {};
-    const promises: Array<{ resolve: (value: void) => void; reject: (error: any) => void }> = [];
+    const batchData: Record<string, unknown> = {};
+    const promises: Array<{ resolve: (value: void) => void; reject: (error: Error) => void }> = [];
 
     for (const [key, item] of entries) {
       batchData[key] = item.data;
@@ -243,7 +243,7 @@ export class StorageManager {
       console.error('Batch write failed:', error);
       
       // Reject all promises
-      promises.forEach(p => p.reject(error));
+      promises.forEach(p => p.reject(error instanceof Error ? error : new Error(String(error))));
       
       // If quota exceeded, wait longer before next attempt
       if (error instanceof Error && (

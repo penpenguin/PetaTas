@@ -233,6 +233,12 @@ export class TimerManager {
     try {
       await this.storageManager.saveTimerState(timerState);
     } catch (error) {
+      // Handle throttling errors gracefully - these are expected in high-frequency scenarios
+      if (error instanceof Error && error.message.includes('Write operation replaced by newer write')) {
+        // This is expected behavior when multiple timer operations happen quickly
+        // The most recent state will be saved, so we don't need to log this as an error
+        return;
+      }
       console.error('Failed to save timer state:', error);
     }
   }
@@ -250,6 +256,11 @@ export class TimerManager {
       
       await this.storageManager.saveTimerState(clearedState);
     } catch (error) {
+      // Handle throttling errors gracefully - these are expected in high-frequency scenarios
+      if (error instanceof Error && error.message.includes('Write operation replaced by newer write')) {
+        // This is expected behavior when multiple timer operations happen quickly
+        return;
+      }
       console.error('Failed to clear timer state:', error);
     }
   }
