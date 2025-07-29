@@ -440,7 +440,10 @@ class PetaTasClient {
       : '';
     
     return `
-      <div class="list-row" data-testid="task-${escapeHtml(task.id)}" data-status="${escapeHtml(task.status)}">
+      <div class="list-row relative" data-testid="task-${escapeHtml(task.id)}" data-status="${escapeHtml(task.status)}">
+        <button class="delete-button absolute top-2 right-2 btn btn-ghost btn-xs text-gray-500 hover:text-red-500 hover:bg-red-50" data-task-id="${escapeHtml(task.id)}" data-action="delete" title="Delete task">
+          ×
+        </button>
         <input 
           type="checkbox" 
           class="checkbox" 
@@ -481,13 +484,8 @@ class PetaTasClient {
             data-task-id="${escapeHtml(task.id)}"
             data-action="set-minutes"
           />
-        </div>
-        <div class="flex gap-1">
           <button class="btn btn-ghost btn-xs" data-task-id="${escapeHtml(task.id)}" data-action="timer">
             ${isTimerRunning ? '⏸️' : '▶️'}
-          </button>
-          <button class="btn btn-ghost btn-xs" data-task-id="${escapeHtml(task.id)}" data-action="delete">
-            🗑️
           </button>
         </div>
       </div>

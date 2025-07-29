@@ -150,6 +150,13 @@ body {
   @apply px-2 py-1 text-xs;
 }
 
+/* Delete button specific styles */
+.delete-button {
+  @apply w-6 h-6 min-h-6 p-0 flex items-center justify-center rounded-full text-lg leading-none;
+  font-size: 18px;
+  z-index: 10;
+}
+
 /* Utility classes */
 .hidden {
   display: none !important;
