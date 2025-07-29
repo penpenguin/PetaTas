@@ -96,6 +96,17 @@ export class StorageManager {
     }
   }
 
+  // Clear timer state for a specific task
+  async clearTimerState(taskId: string): Promise<void> {
+    try {
+      const timerKey = StorageManager.STORAGE_KEY_TIMER_PREFIX + taskId;
+      await chrome.storage.sync.remove(timerKey);
+    } catch (error) {
+      console.error(`Failed to clear timer state for task ${taskId}:`, error);
+      throw error;
+    }
+  }
+
   // Clear all timer states
   async clearTimerStates(): Promise<void> {
     try {

@@ -258,13 +258,12 @@ class PetaTasClient {
 
     // Update or add rows for current tasks
     this.currentTasks.forEach((task, index) => {
-      const existingRow = taskList.querySelector(`[data-testid="task-${task.id}"]`);
-      const newRowHtml = this.renderTaskRow(task);
+      const existingRow = taskList.querySelector(`[data-testid="task-${task.id}"]`) as HTMLElement;
 
       if (existingRow) {
         // Check if the task data has changed by comparing key attributes
         if (this.hasTaskChanged(existingRow, task)) {
-          existingRow.outerHTML = newRowHtml;
+          this.updateTaskRowSafely(existingRow, task);
         }
         // Ensure correct position
         const currentPosition = Array.from(taskList.children).indexOf(existingRow);
@@ -278,9 +277,7 @@ class PetaTasClient {
         }
       } else {
         // Add new task row
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = newRowHtml;
-        const newRow = tempDiv.firstElementChild;
+        const newRow = this.createTaskRowElement(task);
         if (newRow) {
           const targetPosition = taskList.children[index];
           if (targetPosition) {
@@ -291,6 +288,65 @@ class PetaTasClient {
         }
       }
     });
+  }
+
+  private updateTaskRowSafely(existingRow: HTMLElement, task: Task): void {
+    // Update content without destroying the element
+    const isTimerRunning = this.activeTimers.has(task.id);
+    
+    // Update checkbox
+    const checkbox = existingRow.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    if (checkbox) {
+      checkbox.checked = task.status === 'done';
+    }
+    
+    // Update task name
+    const taskName = existingRow.querySelector('.task-name');
+    if (taskName) {
+      taskName.textContent = task.name;
+    }
+    
+    // Update notes
+    const notesElement = existingRow.querySelector('.text-sm.text-gray-500');
+    if (task.notes) {
+      if (notesElement) {
+        notesElement.textContent = task.notes;
+      } else {
+        // Add notes element if it doesn't exist
+        const notesDiv = document.createElement('div');
+        notesDiv.className = 'text-sm text-gray-500';
+        notesDiv.textContent = task.notes;
+        const taskNameParent = existingRow.querySelector('.list-col-grow');
+        if (taskNameParent) {
+          taskNameParent.appendChild(notesDiv);
+        }
+      }
+    } else if (notesElement) {
+      notesElement.remove();
+    }
+    
+    // Update timer display
+    const timerDisplay = existingRow.querySelector('.timer-display');
+    if (timerDisplay) {
+      timerDisplay.textContent = this.formatTime(task.elapsedMs);
+      timerDisplay.className = `timer-display ${isTimerRunning ? 'running' : ''}`;
+    }
+    
+    // Update timer button
+    const timerButton = existingRow.querySelector('button[data-action="timer"]');
+    if (timerButton) {
+      timerButton.textContent = isTimerRunning ? '⏸️' : '▶️';
+      timerButton.setAttribute('title', isTimerRunning ? 'Pause timer' : 'Start timer');
+    }
+    
+    // Update data attributes
+    existingRow.setAttribute('data-status', task.status);
+  }
+
+  private createTaskRowElement(task: Task): HTMLElement | null {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = this.renderTaskRow(task);
+    return tempDiv.firstElementChild as HTMLElement;
   }
 
   private hasTaskChanged(existingRow: Element, task: Task): boolean {
@@ -310,13 +366,17 @@ class PetaTasClient {
 
   updateSingleTaskRow(taskId: string): void {
     const task = this.currentTasks.find(t => t.id === taskId);
-    if (!task) return;
+    if (!task) {
+      console.warn(`Task ${taskId} not found for single row update`);
+      return;
+    }
 
-    const existingRow = document.querySelector(`[data-testid="task-${taskId}"]`);
+    const existingRow = document.querySelector(`[data-testid="task-${taskId}"]`) as HTMLElement;
     if (existingRow) {
-      // Update only the specific task row to avoid full re-render
-      existingRow.outerHTML = this.renderTaskRow(task);
+      // Update only the specific task row safely without destroying the element
+      this.updateTaskRowSafely(existingRow, task);
     } else {
+      console.warn(`Task row ${taskId} not found, falling back to full render`);
       // Fallback to full render if row not found
       this.renderTasks();
     }
@@ -324,7 +384,10 @@ class PetaTasClient {
 
   updateTaskRowVisualState(taskId: string, status: string): void {
     const taskRow = document.querySelector(`[data-testid="task-${taskId}"]`) as HTMLElement;
-    if (!taskRow) return;
+    if (!taskRow) {
+      console.warn(`Task row ${taskId} not found for visual state update`);
+      return;
+    }
 
     // Update data-status attribute for CSS styling
     taskRow.setAttribute('data-status', status);
@@ -339,6 +402,8 @@ class PetaTasClient {
         taskName.style.textDecoration = 'none';
         taskName.style.opacity = '1';
       }
+    } else {
+      console.warn(`Task name element not found for task ${taskId}`);
     }
 
     // Update row background based on status
@@ -348,7 +413,10 @@ class PetaTasClient {
 
   updateTimerButtonState(taskId: string, isRunning: boolean): void {
     const timerButton = document.querySelector(`button[data-task-id="${taskId}"][data-action="timer"]`) as HTMLButtonElement;
-    if (!timerButton) return;
+    if (!timerButton) {
+      console.warn(`Timer button not found for task ${taskId}`);
+      return;
+    }
 
     // Update button text and title
     timerButton.textContent = isRunning ? '⏸️' : '▶️';
@@ -484,10 +552,71 @@ class PetaTasClient {
   }
 
   async deleteTask(taskId: string): Promise<void> {
-    this.currentTasks = this.currentTasks.filter(t => t.id !== taskId);
-    await this.saveTasks();
-    this.renderTasks();
+    // Check if task exists and prevent double deletion
+    const taskIndex = this.currentTasks.findIndex(t => t.id === taskId);
+    if (taskIndex === -1) {
+      console.warn(`Task ${taskId} not found for deletion`);
+      return;
+    }
+
+    // Remove DOM element immediately to prevent visual inconsistencies
+    const taskElement = document.querySelector(`[data-testid="task-${taskId}"]`);
+    if (taskElement) {
+      taskElement.remove();
+    }
+
+    // Stop and clean up active timer if running
+    if (this.activeTimers.has(taskId)) {
+      const timer = this.activeTimers.get(taskId)!;
+      clearInterval(timer.interval);
+      
+      // Update elapsed time before deletion
+      const task = this.currentTasks[taskIndex];
+      if (task) {
+        task.elapsedMs += Date.now() - timer.startTime;
+      }
+      
+      this.activeTimers.delete(taskId);
+    }
+
+    // Remove task from array
+    this.currentTasks.splice(taskIndex, 1);
+    
+    // Update empty state visibility immediately
+    this.updateEmptyStateVisibility();
+    
+    // Clean up timer state from storage and save tasks (non-blocking)
+    this.cleanupTaskData(taskId).catch(error => {
+      console.error('Failed to cleanup task data:', error);
+      this.showToast('Task deleted but cleanup failed', 'warning');
+    });
+    
     this.showToast('Task deleted', 'success');
+  }
+
+  private async cleanupTaskData(taskId: string): Promise<void> {
+    try {
+      await Promise.all([
+        this.storageManager.clearTimerState(taskId),
+        this.saveTasks()
+      ]);
+    } catch (error) {
+      console.error('Failed to clean up task data:', error);
+      throw error;
+    }
+  }
+
+  private updateEmptyStateVisibility(): void {
+    const emptyState = document.getElementById('empty-state');
+    const taskList = document.getElementById('task-list');
+    
+    if (this.currentTasks.length === 0) {
+      emptyState?.classList.remove('hidden');
+      taskList?.classList.add('hidden');
+    } else {
+      emptyState?.classList.add('hidden');
+      taskList?.classList.remove('hidden');
+    }
   }
 
   toggleTimer(taskId: string): void {
