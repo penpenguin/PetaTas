@@ -325,6 +325,12 @@ class PetaTasClient {
       timerDisplay.className = `timer-display ${isTimerRunning ? 'running' : ''}`;
     }
     
+    // Update minutes input
+    const minutesInput = existingRow.querySelector('.timer-minutes-input') as HTMLInputElement;
+    if (minutesInput) {
+      minutesInput.value = Math.round(task.elapsedMs / 60000).toString();
+    }
+    
     // Update timer button
     const timerButton = existingRow.querySelector('button[data-action="timer"]');
     if (timerButton) {
@@ -462,7 +468,20 @@ class PetaTasClient {
             </div>
           </div>
         </div>
-        <div class="timer-display ${isTimerRunning ? 'running' : ''}">${elapsedTime}</div>
+        <div class="timer-controls flex items-center gap-2">
+          <div class="timer-display ${isTimerRunning ? 'running' : ''}">${elapsedTime}</div>
+          <input 
+            type="number" 
+            class="timer-minutes-input w-16 text-xs border rounded px-1 py-0.5 text-center"
+            value="${Math.round(task.elapsedMs / 60000)}"
+            min="0"
+            step="1"
+            placeholder="min"
+            title="Enter time in minutes"
+            data-task-id="${escapeHtml(task.id)}"
+            data-action="set-minutes"
+          />
+        </div>
         <div class="flex gap-1">
           <button class="btn btn-ghost btn-xs" data-task-id="${escapeHtml(task.id)}" data-action="timer">
             ${isTimerRunning ? '⏸️' : '▶️'}
@@ -492,6 +511,17 @@ class PetaTasClient {
         this.deleteTask(taskId);
       } else if (target.classList.contains('notes-display')) {
         this.enterNotesEditMode(taskId);
+      }
+    });
+
+    // Handle minute input changes
+    taskList.addEventListener('input', (e) => {
+      const target = e.target as HTMLInputElement;
+      if (target.classList.contains('timer-minutes-input')) {
+        const taskId = target.dataset.taskId;
+        if (taskId) {
+          this.handleMinuteInputChange(taskId, target.value);
+        }
       }
     });
 
@@ -844,6 +874,73 @@ class PetaTasClient {
     const hours = Math.floor(minutes / 60);
     
     return `${hours.toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
+  }
+
+  // Convert minutes to milliseconds
+  private minutesToMs(minutes: number): number {
+    return Math.max(0, minutes) * 60 * 1000;
+  }
+
+  // Convert milliseconds to minutes (rounded)
+  private msToMinutes(ms: number): number {
+    return Math.round(ms / 60000);
+  }
+
+  // Handle manual minute input changes
+  async handleMinuteInputChange(taskId: string, inputValue: string): Promise<void> {
+    const task = this.currentTasks.find(t => t.id === taskId);
+    if (!task) {
+      console.warn(`Task ${taskId} not found for minute input change`);
+      return;
+    }
+
+    // Parse and validate input
+    const minutes = parseInt(inputValue, 10);
+    if (isNaN(minutes) || minutes < 0) {
+      // Reset to current value if invalid
+      const minutesInput = document.querySelector(`input[data-task-id="${taskId}"][data-action="set-minutes"]`) as HTMLInputElement;
+      if (minutesInput) {
+        minutesInput.value = this.msToMinutes(task.elapsedMs).toString();
+      }
+      return;
+    }
+
+    // Store previous values for potential rollback
+    const previousElapsedMs = task.elapsedMs;
+    const previousUpdatedAt = task.updatedAt;
+
+    // Calculate new elapsed time in milliseconds
+    const newElapsedMs = this.minutesToMs(minutes);
+    
+    // If timer is currently running, we need to update the base elapsed time
+    if (this.activeTimers.has(taskId)) {
+      const timer = this.activeTimers.get(taskId)!;
+      // Update the base elapsed time and reset start time
+      task.elapsedMs = newElapsedMs;
+      timer.startTime = Date.now();
+    } else {
+      // Timer not running, just update elapsed time
+      task.elapsedMs = newElapsedMs;
+    }
+    
+    task.updatedAt = new Date();
+
+    // Update timer display immediately
+    this.updateSingleTaskRow(taskId);
+
+    // Save to storage in background
+    this.saveTasks().catch(error => {
+      console.error('Failed to save manual time change:', error);
+      
+      // Revert changes on save failure
+      task.elapsedMs = previousElapsedMs;
+      task.updatedAt = previousUpdatedAt;
+      
+      // Revert UI
+      this.updateSingleTaskRow(taskId);
+      
+      this.showToast('Failed to save time change. Please try again.', 'error');
+    });
   }
 
   showToast(message: string, type: 'success' | 'error' | 'warning' = 'success'): void {
