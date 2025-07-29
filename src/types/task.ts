@@ -59,8 +59,11 @@ export function isValidTask(obj: unknown): obj is Task {
   return isBasicValid;
 }
 
+// Extension-specific columns that should be ignored during import to preserve existing values
+const EXTENSION_COLUMNS = new Set(['status', 'notes', 'timer', 'description', 'comment', 'state']);
+
 // Create a new task from markdown table row
-export function createTask(headers: string[], row: string[]): Task {
+export function createTask(headers: string[], row: string[], ignoreExtensionColumns: boolean = false): Task {
   const now = new Date();
   const task: Task = {
     id: generateTaskId(),
@@ -77,6 +80,11 @@ export function createTask(headers: string[], row: string[]): Task {
   headers.forEach((header, index) => {
     const value = row[index] || '';
     const normalizedHeader = header.toLowerCase().trim();
+    
+    // Skip extension columns if ignoreExtensionColumns is true
+    if (ignoreExtensionColumns && EXTENSION_COLUMNS.has(normalizedHeader)) {
+      return;
+    }
     
     switch (normalizedHeader) {
       case 'name':

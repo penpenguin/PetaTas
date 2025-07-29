@@ -129,9 +129,9 @@ class PetaTasClient {
         }
       }
 
-      // Convert to tasks using the createTask function
+      // Convert to tasks using the createTask function with extension columns ignored
       const newTasks: Task[] = parsedTable.rows.map(row => 
-        createTask(parsedTable.headers, row)
+        createTask(parsedTable.headers, row, true)
       );
 
       // Stop all active timers before replacing tasks
@@ -173,27 +173,30 @@ class PetaTasClient {
         throw new Error('Clipboard API not available');
       }
 
-      // Collect all unique headers from all tasks
-      const allHeaders = new Set(['Name', 'Status', 'Notes']);
+      // Collect headers: extension-specific columns + custom columns
+      const extensionHeaders = ['Status', 'Notes', 'Timer'];
+      const customHeaders = new Set<string>();
+      
       this.currentTasks.forEach(task => {
         if (task.additionalColumns) {
-          Object.keys(task.additionalColumns).forEach(header => allHeaders.add(header));
+          Object.keys(task.additionalColumns).forEach(header => customHeaders.add(header));
         }
       });
-      const headers = Array.from(allHeaders);
+      
+      const headers = [...extensionHeaders, ...Array.from(customHeaders)];
 
       const rows = this.currentTasks.map(task => {
         const row: string[] = [];
         headers.forEach(header => {
           switch (header) {
-            case 'Name':
-              row.push(task.name);
-              break;
             case 'Status':
               row.push(task.status);
               break;
             case 'Notes':
               row.push(task.notes);
+              break;
+            case 'Timer':
+              row.push(this.formatTime(task.elapsedMs));
               break;
             default:
               row.push(task.additionalColumns?.[header] || '');
