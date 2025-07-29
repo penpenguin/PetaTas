@@ -66,6 +66,27 @@ body {
   transition: text-decoration 0.2s ease, opacity 0.2s ease;
 }
 
+/* Notes styles */
+.notes-container {
+  @apply w-full;
+}
+
+.notes-display {
+  @apply min-h-[2rem] flex items-center;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.notes-input {
+  @apply min-h-[2rem] resize-none;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.notes-input:focus {
+  @apply shadow-sm;
+}
+
 .timer-display {
   @apply text-sm font-mono text-base-content/70;
 }

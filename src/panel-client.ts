@@ -306,23 +306,13 @@ class PetaTasClient {
       taskName.textContent = task.name;
     }
     
-    // Update notes
-    const notesElement = existingRow.querySelector('.text-sm.text-gray-500');
-    if (task.notes) {
-      if (notesElement) {
-        notesElement.textContent = task.notes;
-      } else {
-        // Add notes element if it doesn't exist
-        const notesDiv = document.createElement('div');
-        notesDiv.className = 'text-sm text-gray-500';
-        notesDiv.textContent = task.notes;
-        const taskNameParent = existingRow.querySelector('.list-col-grow');
-        if (taskNameParent) {
-          taskNameParent.appendChild(notesDiv);
-        }
-      }
-    } else if (notesElement) {
-      notesElement.remove();
+    // Update notes display and input
+    const notesDisplay = existingRow.querySelector('.notes-display');
+    const notesInput = existingRow.querySelector('.notes-input') as HTMLTextAreaElement;
+    if (notesDisplay && notesInput) {
+      notesDisplay.textContent = task.notes || 'Add notes...';
+      notesDisplay.className = `notes-display text-sm text-gray-500 cursor-pointer hover:bg-gray-100 rounded px-2 py-1 transition-colors ${task.notes ? '' : 'italic text-gray-400'}`;
+      notesInput.value = task.notes;
     }
     
     // Update timer display
@@ -450,8 +440,24 @@ class PetaTasClient {
         />
         <div class="list-col-grow">
           <span class="task-name">${escapeHtml(task.name)}</span>
-          ${task.notes ? `<div class="text-sm text-gray-500">${escapeHtml(task.notes)}</div>` : ''}
           ${additionalColumnsHtml ? `<div class="mt-1">${additionalColumnsHtml}</div>` : ''}
+          <div class="notes-container mt-2">
+            <textarea 
+              class="notes-input hidden w-full bg-transparent border border-gray-300 rounded px-2 py-1 text-sm resize-none outline-none focus:border-primary focus:ring-1 focus:ring-primary" 
+              rows="2"
+              placeholder="Add notes..."
+              data-task-id="${escapeHtml(task.id)}"
+              id="notes-input-${escapeHtml(task.id)}"
+            >${escapeHtml(task.notes)}</textarea>
+            <div 
+              class="notes-display text-sm text-gray-500 cursor-pointer hover:bg-gray-100 rounded px-2 py-1 transition-colors ${task.notes ? '' : 'italic text-gray-400'}" 
+              data-task-id="${escapeHtml(task.id)}"
+              id="notes-display-${escapeHtml(task.id)}"
+              title="Click to edit notes"
+            >
+              ${task.notes ? escapeHtml(task.notes) : 'Add notes...'}
+            </div>
+          </div>
         </div>
         <div class="timer-display ${isTimerRunning ? 'running' : ''}">${elapsedTime}</div>
         <div class="flex gap-1">
@@ -481,6 +487,8 @@ class PetaTasClient {
         this.toggleTimer(taskId);
       } else if (target.dataset.action === 'delete') {
         this.deleteTask(taskId);
+      } else if (target.classList.contains('notes-display')) {
+        this.enterNotesEditMode(taskId);
       }
     });
 
@@ -490,6 +498,32 @@ class PetaTasClient {
         const taskId = target.dataset.taskId;
         if (taskId) {
           this.toggleTaskStatus(taskId, target.checked);
+        }
+      }
+    });
+
+    // Handle notes textarea events
+    taskList.addEventListener('blur', (e) => {
+      const target = e.target as HTMLTextAreaElement;
+      if (target.classList.contains('notes-input')) {
+        const taskId = target.dataset.taskId;
+        if (taskId) {
+          this.exitNotesEditMode(taskId, true);
+        }
+      }
+    }, true);
+
+    taskList.addEventListener('keydown', (e) => {
+      const target = e.target as HTMLTextAreaElement;
+      if (target.classList.contains('notes-input')) {
+        const taskId = target.dataset.taskId;
+        if (taskId) {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            this.exitNotesEditMode(taskId, true);
+          } else if (e.key === 'Escape') {
+            this.exitNotesEditMode(taskId, false);
+          }
         }
       }
     });
@@ -724,6 +758,68 @@ class PetaTasClient {
     if (display) {
       display.textContent = this.formatTime(currentElapsed);
     }
+  }
+
+  enterNotesEditMode(taskId: string): void {
+    const notesDisplay = document.getElementById(`notes-display-${taskId}`);
+    const notesInput = document.getElementById(`notes-input-${taskId}`) as HTMLTextAreaElement;
+    
+    if (!notesDisplay || !notesInput) {
+      console.warn(`Notes elements not found for task ${taskId}`);
+      return;
+    }
+
+    // Hide display, show input
+    notesDisplay.classList.add('hidden');
+    notesInput.classList.remove('hidden');
+    
+    // Focus and select the input
+    notesInput.focus();
+    notesInput.select();
+  }
+
+  exitNotesEditMode(taskId: string, save: boolean): void {
+    const notesDisplay = document.getElementById(`notes-display-${taskId}`);
+    const notesInput = document.getElementById(`notes-input-${taskId}`) as HTMLTextAreaElement;
+    const task = this.currentTasks.find(t => t.id === taskId);
+    
+    if (!notesDisplay || !notesInput || !task) {
+      console.warn(`Notes elements or task not found for task ${taskId}`);
+      return;
+    }
+
+    if (save) {
+      // Update task notes
+      const newNotes = notesInput.value.trim();
+      const oldNotes = task.notes;
+      
+      if (newNotes !== oldNotes) {
+        task.notes = newNotes;
+        task.updatedAt = new Date();
+        
+        // Update display text
+        notesDisplay.textContent = newNotes || 'Add notes...';
+        notesDisplay.className = `notes-display text-sm text-gray-500 cursor-pointer hover:bg-gray-100 rounded px-2 py-1 transition-colors ${newNotes ? '' : 'italic text-gray-400'}`;
+        
+        // Save to storage
+        this.saveTasks().catch(error => {
+          console.error('Failed to save notes changes:', error);
+          // Revert changes on save failure
+          task.notes = oldNotes;
+          notesDisplay.textContent = oldNotes || 'Add notes...';
+          notesDisplay.className = `notes-display text-sm text-gray-500 cursor-pointer hover:bg-gray-100 rounded px-2 py-1 transition-colors ${oldNotes ? '' : 'italic text-gray-400'}`;
+          notesInput.value = oldNotes;
+          this.showToast('Failed to save notes. Please try again.', 'error');
+        });
+      }
+    } else {
+      // Revert to original value
+      notesInput.value = task.notes;
+    }
+
+    // Show display, hide input
+    notesDisplay.classList.remove('hidden');
+    notesInput.classList.add('hidden');
   }
 
   setupErrorNotificationListener(): void {
