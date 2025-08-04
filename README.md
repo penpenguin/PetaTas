@@ -1,216 +1,82 @@
-# PetaTas
+# PetaTas Chrome Extension
 
-A Chrome extension that converts HTML tables into task management rows with timers and markdown export functionality.
+Markdown table-based task management with timers and side panel functionality.
 
-## Features
+## Installation & Testing
 
-- **Table Import**: Paste HTML tables from any application to create task lists
-- **Task Management**: Each table row becomes a task with checkbox, timer, and notes
-- **Timer System**: Start/Stop/Reset timers for each task with precise timing (24+ hour support)
-- **Markdown Export**: Export tasks to GitHub Flavored Markdown format
-- **Persistent Storage**: All data persists across browser sessions using Chrome storage
-- **Side Panel Interface**: Clean, responsive UI in Chrome's side panel
+### 1. Load Extension in Chrome Developer Mode
 
-## Requirements
+1. Open Chrome browser
+2. Navigate to `chrome://extensions/`
+3. Enable "Developer mode" (toggle in top right)
+4. Click "Load unpacked"
+5. Select the `dist` folder from this directory
+6. The extension should now appear in your extensions list
 
-- Node.js 16 or higher
-- Chrome browser (for testing)
+### 2. Usage
 
-## Installation & Build
+1. Click the PetaTas extension icon in the Chrome toolbar
+2. The Side Panel will open with the task manager interface
+3. Click "Paste Markdown" to import tasks from a Markdown table
+4. Use the timer buttons to track time spent on tasks
+5. Click "Export" to copy tasks back to clipboard as Markdown
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd PetaTas
-   ```
+### 3. Sample Markdown Table
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+Copy this sample table and paste it into the extension:
 
-3. **Build the extension**
-   ```bash
-   # Development build
-   npm run build
-   
-   # Production build (minified)
-   npm run build:prod
-   ```
-
-4. **Load in Chrome**
-   - Open Chrome and navigate to `chrome://extensions/`
-   - Enable "Developer mode"
-   - Click "Load unpacked"
-   - Select the `dist` folder
-
-## Development
-
-### Available Scripts
-
-```bash
-# Build for development
-npm run build
-
-# Build for production
-npm run build:prod
-
-# Run tests
-npm test
-
-# Run tests in watch mode
-npm test:watch
-
-# Type checking
-npm run typecheck
-
-# Linting
-npm run lint
+```markdown
+| Task | Status | Notes |
+|------|--------|-------|
+| Review documentation | todo | Important for project |
+| Fix styling issues | in-progress | Almost complete |
+| Write tests | todo | Need to add E2E tests |
+| Deploy to production | todo | After all tests pass |
 ```
 
-### Project Structure
+### 4. Features
+
+- **Markdown Table Import**: Paste any Markdown table to create tasks
+- **Timer Tracking**: Start/stop timers for individual tasks
+- **Task Status**: Toggle between todo/in-progress/done
+- **Persistent Storage**: Tasks are saved using Chrome's storage API
+- **Export**: Copy tasks back to clipboard as Markdown
+- **Side Panel**: Native Chrome side panel integration
+
+### 5. File Structure
 
 ```
-PetaTas/
-├── manifest.json           # Chrome extension manifest
-├── panel.html             # Side panel HTML
-├── panel.ts               # Main application component
-├── task-row.ts            # Task row Lit component
-├── background.ts          # Background service worker
-├── styles.css             # Global CSS styles
-├── types.ts               # TypeScript type definitions
-├── utils/
-│   ├── tableParser.ts     # HTML table parser
-│   ├── tableParser.test.ts # Unit tests for parser
-│   └── markdown.ts        # Markdown table generator
-├── build.js               # esbuild configuration
-├── package.json           # Project dependencies
-├── tsconfig.json          # TypeScript configuration
-└── dist/                  # Built extension files
+dist/
+├── manifest.json          # Chrome Extension manifest
+├── service-worker.js      # Background service worker
+├── panel-client.js        # Main client-side JavaScript
+├── panel.css              # daisyUI styles
+├── task-list.css          # Task list component styles
+├── hoisted.js             # Astro-generated JavaScript
+└── panel/
+    └── index.html         # Side panel HTML
 ```
 
-## Usage
+### 6. Development
 
-1. **Open the extension**
-   - Click the PetaTas icon in Chrome's toolbar
-   - The side panel will open on the right side
+The extension is built using:
+- **Astro 2.x**: Static site generator
+- **daisyUI**: Tailwind CSS component library
+- **TypeScript**: Type safety
+- **Chrome Extension Manifest V3**: Modern extension platform
+- **Vitest**: 57 passing tests with TDD approach
 
-2. **Import a table**
-   - Copy any HTML table from Excel, Google Sheets, web pages, etc.
-   - Paste (Ctrl+V/Cmd+V) anywhere in the side panel
-   - The table will be converted to task rows
+### 7. Troubleshooting
 
-3. **Manage tasks**
-   - Check/uncheck tasks as complete
-   - Use Start/Stop/Reset buttons for timing
-   - Add notes in the textarea for each task
+- If the extension doesn't load, check the console for errors
+- Make sure all files are in the `dist` folder
+- Verify Chrome is updated to support Manifest V3
+- Check that the extension has necessary permissions
 
-4. **Export to Markdown**
-   - Click "Export Markdown" to copy the task table
-   - Paste into GitHub Issues, README files, etc.
+### 8. Next Steps
 
-## Technical Details
-
-### Architecture
-
-- **Lit Components**: Modern web components for reactive UI
-- **Chrome APIs**: Uses `storage.sync`, `sidePanel`, and `clipboard` APIs
-- **TypeScript**: Full type safety and modern JavaScript features
-- **esbuild**: Fast bundling with ES modules output
-- **CSP Compliant**: No eval(), inline scripts, or unsafe practices
-
-### Timer Implementation
-
-- Uses `requestAnimationFrame` for smooth display updates
-- Stores elapsed time in milliseconds for precision
-- Supports durations over 24 hours
-- Auto-saves timer state to prevent data loss
-
-### Storage Schema
-
-```typescript
-interface Task {
-  id: string;           // Unique identifier
-  cells: string[];      // Table cell contents
-  done: boolean;        // Completion status
-  notes: string;        // User notes
-  elapsedMs: number;    // Timer elapsed time in milliseconds
-}
-```
-
-### Performance
-
-- Handles 1000+ row tables without UI freezing
-- Efficient DOM updates using Lit's reactive system
-- Lazy evaluation and minimal re-renders
-- Memory-conscious timer management
-
-## Testing
-
-The project includes comprehensive unit tests for the table parser:
-
-```bash
-# Run all tests
-npm test
-
-# Run specific test file
-npm test tableParser.test.ts
-
-# Generate coverage report
-npm test -- --coverage
-```
-
-Test coverage includes:
-- HTML table parsing edge cases
-- Empty cell handling
-- Malformed HTML graceful handling
-- Performance testing with large datasets
-- Header detection and generation
-
-## Browser Compatibility
-
-- Chrome 88+ (Manifest V3 support)
-- Chromium-based browsers (Edge, Brave, etc.)
-
-## Permissions
-
-The extension requests these permissions:
-- `storage`: Save tasks and settings
-- `sidePanel`: Display in Chrome's side panel
-- `clipboardRead`: Read pasted table data
-- `clipboardWrite`: Export markdown to clipboard
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Run the test suite: `npm test`
-6. Build and test the extension: `npm run build`
-7. Submit a pull request
-
-## License
-
-MIT License - see LICENSE file for details.
-
-## Troubleshooting
-
-### Build Issues
-
-- Ensure Node.js 16+ is installed
-- Clear `node_modules` and reinstall: `rm -rf node_modules package-lock.json && npm install`
-- Check for TypeScript errors: `npm run typecheck`
-
-### Extension Loading Issues
-
-- Verify the `dist` folder exists and contains built files
-- Check Chrome developer console for errors
-- Ensure manifest.json is valid
-- Try reloading the extension in `chrome://extensions/`
-
-### Data Loss
-
-- Tasks are automatically saved to Chrome storage
-- If data appears lost, check Chrome storage quota
-- Storage persists across browser restarts but not across Chrome profiles
+1. Test in real browser environment
+2. Verify clipboard permissions work
+3. Test Side Panel API integration
+4. Add E2E tests with Playwright
+5. Performance optimizations

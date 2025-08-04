@@ -1,0 +1,194 @@
+/* Main styles for PetaTas Chrome Extension */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles for the extension */
+body {
+  @apply bg-base-100 text-base-content;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+#panel-root {
+  @apply h-screen overflow-hidden;
+}
+
+.drawer {
+  @apply h-full;
+}
+
+.drawer-content {
+  @apply flex flex-col h-full;
+}
+
+.navbar {
+  @apply flex-shrink-0 border-b border-base-300;
+  min-height: 4rem; /* Ensure consistent navbar height */
+}
+
+.task-list-container {
+  @apply flex-1 overflow-y-auto;
+  min-height: 0; /* Allow flex item to shrink below content size */
+  /* Use flex-basis instead of height for better flex behavior */
+  flex-basis: 0;
+}
+
+.list {
+  @apply space-y-2;
+}
+
+.list-row {
+  @apply flex items-center gap-3 p-3 bg-base-200 rounded-lg hover:bg-base-300 transition-colors;
+}
+
+/* Status-based styling for instant visual feedback */
+.list-row.status-done {
+  @apply bg-success/10 border-l-4 border-success;
+}
+
+.list-row.status-in-progress {
+  @apply bg-warning/10 border-l-4 border-warning;
+}
+
+.list-row.status-todo {
+  @apply bg-base-200;
+}
+
+.list-col-grow {
+  @apply flex-1 min-w-0;
+}
+
+.task-name {
+  @apply font-medium truncate;
+  transition: text-decoration 0.2s ease, opacity 0.2s ease;
+}
+
+/* Notes styles */
+.notes-container {
+  @apply w-full;
+}
+
+.notes-display {
+  @apply min-h-[2rem] flex items-center;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.notes-input {
+  @apply min-h-[2rem] resize-none;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.notes-input:focus {
+  @apply shadow-sm;
+}
+
+.timer-display {
+  @apply text-sm font-mono text-base-content/70;
+}
+
+.empty-state {
+  @apply flex flex-col items-center justify-center h-full;
+}
+
+/* Toast styles */
+.toast {
+  @apply fixed z-50;
+}
+
+.alert {
+  @apply flex items-center gap-2 p-4 rounded-lg shadow-lg;
+}
+
+.alert-success {
+  @apply bg-success text-success-content;
+}
+
+.alert-error {
+  @apply bg-error text-error-content;
+}
+
+.alert-warning {
+  @apply bg-warning text-warning-content;
+}
+
+/* Checkbox styles */
+.checkbox {
+  @apply flex-shrink-0;
+}
+
+.checkbox:checked {
+  @apply accent-primary;
+}
+
+/* Button styles */
+.btn {
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors;
+}
+
+.btn-primary {
+  @apply bg-primary text-primary-content hover:bg-primary/90;
+}
+
+.btn-outline {
+  @apply border border-base-300 bg-transparent hover:bg-base-200;
+}
+
+.btn-ghost {
+  @apply bg-transparent hover:bg-base-200;
+}
+
+.btn-sm {
+  @apply px-3 py-1.5 text-sm;
+}
+
+.btn-xs {
+  @apply px-2 py-1 text-xs;
+}
+
+/* Delete button specific styles */
+.delete-button {
+  @apply w-6 h-6 min-h-6 p-0 flex items-center justify-center rounded-full text-lg leading-none;
+  font-size: 18px;
+  z-index: 10;
+}
+
+/* Utility classes */
+.hidden {
+  display: none !important;
+}
+
+.container {
+  @apply max-w-none w-full;
+  /* Remove height: 100% to let flexbox handle it */
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .navbar {
+    @apply flex-col gap-2 p-2;
+  }
+  
+  .navbar .flex-1 {
+    @apply w-full;
+  }
+  
+  .list-row {
+    @apply flex-col items-start gap-2 text-sm;
+  }
+  
+  .timer-display {
+    @apply self-end;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+  }
+}
