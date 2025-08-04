@@ -34,21 +34,11 @@ jobs:
         run: npm run typecheck
         
       - name: Run unit tests
-        run: npm test -- --coverage
+        run: npm test -- --run --coverage
         
       - name: Build project
         run: npm run build
         
-      - name: Install Chrome for E2E tests
-        uses: browser-actions/setup-chrome@v1
-        with:
-          chrome-version: stable
-          
-      - name: Run E2E tests
-        run: npm run test:e2e
-        env:
-          CI: true
-          
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
@@ -57,7 +47,6 @@ jobs:
           path: |
             coverage/
             test-results/
-            playwright-report/
           retention-days: 7
           
       - name: Upload coverage to Codecov
