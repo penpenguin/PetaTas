@@ -4,7 +4,7 @@
 import { parseMarkdownTable } from './utils/markdown-parser.js';
 import { createTask, type Task } from './types/task.js';
 import { StorageManager } from './utils/storage-manager.js';
-import { escapeHtml } from './utils/html-utils.js';
+import { escapeHtml, escapeHtmlAttribute } from './utils/html-utils.js';
 import { handleStorageError, handleClipboardError, handleGeneralError } from './utils/error-handler.js';
 
 
@@ -20,6 +20,7 @@ class PetaTasClient {
   private storageManager = new StorageManager();
   private timerUpdateBatch: Set<string> = new Set();
   private batchUpdateTimer: NodeJS.Timeout | null = null;
+  private isSubmittingTask = false;
   
   constructor() {
     // Initialize when DOM is ready
@@ -61,6 +62,7 @@ class PetaTasClient {
   setupEventListeners(): void {
     const pasteButton = document.getElementById('paste-button');
     const exportButton = document.getElementById('export-button');
+    const addTaskButton = document.getElementById('add-task-button');
     
     if (pasteButton) {
       pasteButton.addEventListener('click', () => this.handlePasteClick());
@@ -68,6 +70,16 @@ class PetaTasClient {
     
     if (exportButton) {
       exportButton.addEventListener('click', () => this.handleExportClick());
+    }
+    
+    if (addTaskButton) {
+      addTaskButton.addEventListener('click', () => this.handleAddTaskClick());
+    }
+    
+    // Setup add task form submission
+    const addTaskForm = document.getElementById('add-task-form');
+    if (addTaskForm) {
+      addTaskForm.addEventListener('submit', (e) => this.handleAddTaskSubmit(e));
     }
   }
 
@@ -217,6 +229,305 @@ class PetaTasClient {
     }
   }
 
+  handleAddTaskClick(): void {
+    // Populate dynamic fields based on existing tasks
+    this.populateDynamicFields();
+    
+    // Show the modal
+    const modal = document.getElementById('add-task-modal') as HTMLInputElement;
+    if (modal) {
+      modal.checked = true;
+      
+      // Focus on the first input field
+      setTimeout(() => {
+        const firstInput = document.querySelector('.dynamic-field-input') as HTMLInputElement;
+        if (firstInput) {
+          firstInput.focus();
+        }
+      }, 100);
+    }
+  }
+
+  private populateDynamicFields(): void {
+    const container = document.getElementById('dynamic-fields-container');
+    if (!container) return;
+
+    // Clear existing fields
+    container.innerHTML = '';
+
+    // If no tasks exist, show a basic name field
+    if (this.currentTasks.length === 0) {
+      this.createBasicNameField(container);
+      return;
+    }
+
+    // Get column structure from existing tasks
+    const columnStructure = this.getColumnStructure();
+    
+    // Create form fields based on detected structure
+    columnStructure.forEach((columnInfo) => {
+      this.createDynamicField(container, columnInfo);
+    });
+  }
+
+  private createBasicNameField(container: HTMLElement): void {
+    const formControl = document.createElement('div');
+    formControl.className = 'form-control';
+    
+    formControl.innerHTML = `
+      <label class="label">
+        <span class="label-text">Task Name</span>
+      </label>
+      <input 
+        type="text" 
+        class="input input-bordered w-full dynamic-field-input" 
+        data-field-name="${escapeHtmlAttribute('name')}"
+        placeholder="${escapeHtmlAttribute('Enter task name...')}" 
+      />
+    `;
+    
+    container.appendChild(formControl);
+  }
+
+  private getColumnStructure(): Array<{name: string, type: 'text' | 'textarea', isExtension: boolean}> {
+    const allColumns = new Map<string, {type: 'text' | 'textarea', isExtension: boolean, priority: number}>();
+    
+    // Extension columns that should be handled specially
+    const extensionColumns = new Set(['status', 'notes', 'timer']);
+    
+    this.currentTasks.forEach(task => {
+      // Check if name field exists (from name, task, title headers)
+      if (task.name) {
+        allColumns.set('name', {type: 'text', isExtension: false, priority: 1});
+      }
+      
+      // Check notes field
+      if (task.notes !== undefined) {
+        allColumns.set('notes', {type: 'textarea', isExtension: true, priority: 100});
+      }
+      
+      // Add additional columns
+      if (task.additionalColumns) {
+        Object.keys(task.additionalColumns).forEach(header => {
+          if (!allColumns.has(header)) {
+            allColumns.set(header, {
+              type: 'text', 
+              isExtension: extensionColumns.has(header.toLowerCase()), 
+              priority: 50
+            });
+          }
+        });
+      }
+    });
+
+    // Sort columns: main field first, then additional columns, then notes last
+    return Array.from(allColumns.entries())
+      .sort(([, a], [, b]) => a.priority - b.priority)
+      .map(([name, info]) => ({name, type: info.type, isExtension: info.isExtension}));
+  }
+
+  private createDynamicField(container: HTMLElement, columnInfo: {name: string, type: 'text' | 'textarea', isExtension: boolean}): void {
+    const formControl = document.createElement('div');
+    formControl.className = 'form-control';
+    
+    const fieldLabel = this.getFieldLabel(columnInfo.name);
+    const placeholder = this.getFieldPlaceholder(columnInfo.name);
+    
+    if (columnInfo.type === 'textarea') {
+      formControl.innerHTML = `
+        <label class="label">
+          <span class="label-text">${escapeHtml(fieldLabel)}</span>
+        </label>
+        <textarea 
+          class="textarea textarea-bordered w-full dynamic-field-input" 
+          data-field-name="${escapeHtmlAttribute(columnInfo.name)}"
+          rows="3"
+          placeholder="${escapeHtmlAttribute(placeholder)}"
+        ></textarea>
+      `;
+    } else {
+      formControl.innerHTML = `
+        <label class="label">
+          <span class="label-text">${escapeHtml(fieldLabel)}</span>
+        </label>
+        <input 
+          type="text" 
+          class="input input-bordered w-full dynamic-field-input" 
+          data-field-name="${escapeHtmlAttribute(columnInfo.name)}"
+          placeholder="${escapeHtmlAttribute(placeholder)}"
+        />
+      `;
+    }
+    
+    container.appendChild(formControl);
+  }
+
+  private getFieldLabel(fieldName: string): string {
+    switch (fieldName.toLowerCase()) {
+      case 'name': return 'Task Name';
+      case 'notes': return 'Notes';
+      case 'priority': return 'Priority';
+      case 'category': return 'Category';
+      case 'assignee': return 'Assignee';
+      case 'status': return 'Status';
+      default: return fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+    }
+  }
+
+  private getFieldPlaceholder(fieldName: string): string {
+    switch (fieldName.toLowerCase()) {
+      case 'name': return 'Enter task name...';
+      case 'notes': return 'Add notes (optional)...';
+      case 'priority': return 'e.g., High, Medium, Low';
+      case 'category': return 'e.g., Development, Design, Testing';
+      case 'assignee': return 'Enter assignee name...';
+      case 'status': return 'e.g., TODO, In Progress, Done';
+      default: return `Enter ${fieldName.toLowerCase()}...`;
+    }
+  }
+
+  async handleAddTaskSubmit(event: Event): Promise<void> {
+    event.preventDefault();
+    
+    // Prevent concurrent submissions
+    if (this.isSubmittingTask) {
+      return;
+    }
+    this.isSubmittingTask = true;
+    
+    try {
+      // Collect all dynamic field values with validation
+      const fieldValues: Record<string, string> = {};
+      const fieldInputs = document.querySelectorAll('.dynamic-field-input') as NodeListOf<HTMLInputElement | HTMLTextAreaElement>;
+      
+      fieldInputs.forEach((input) => {
+        const fieldName = input.dataset.fieldName;
+        const value = input.value.trim();
+        
+        if (fieldName && this.validateFieldInput(fieldName, value)) {
+          fieldValues[fieldName] = value;
+        }
+      });
+
+      // Prepare headers and values for createTask
+      const headers: string[] = [];
+      const values: string[] = [];
+      
+      Object.entries(fieldValues).forEach(([fieldName, value]) => {
+        if (value) { // Only include non-empty values
+          headers.push(fieldName);
+          values.push(value);
+        }
+      });
+
+      // Create new task (even if all fields are empty)
+      const newTask = createTask(headers, values);
+
+      // Add task to the list
+      await this.addSingleTask(newTask);
+
+      // Reset form and close modal only on success
+      this.resetAddTaskForm();
+      const modal = document.getElementById('add-task-modal') as HTMLInputElement;
+      if (modal) {
+        modal.checked = false;
+      }
+
+      this.showToast('Task added successfully', 'success');
+    } catch (error) {
+      handleGeneralError(error, 'medium', {
+        module: 'PetaTasClient',
+        operation: 'handleAddTaskSubmit'
+      }, `Failed to add task: ${(error as Error).message}`);
+    } finally {
+      this.isSubmittingTask = false;
+    }
+  }
+
+  private resetAddTaskForm(): void {
+    const form = document.getElementById('add-task-form') as HTMLFormElement;
+    if (form) {
+      form.reset();
+    }
+  }
+
+  async addSingleTask(task: Task): Promise<void> {
+    // Store previous state for potential rollback
+    const previousTasksState = [...this.currentTasks];
+    const modal = document.getElementById('add-task-modal') as HTMLInputElement;
+    const wasModalOpen = modal?.checked;
+    const formData = this.captureFormState();
+    
+    try {
+      // Add task to the array
+      this.currentTasks.push(task);
+      
+      // Save to storage
+      await this.saveTasks();
+      
+      // Re-render tasks to show the new task
+      this.renderTasks();
+    } catch (error) {
+      // Complete rollback on any error
+      this.currentTasks = previousTasksState;
+      this.renderTasks();
+      
+      // Restore modal and form state if it was open
+      if (wasModalOpen && modal) {
+        modal.checked = true;
+        this.restoreFormState(formData);
+      }
+      
+      throw error;
+    }
+  }
+
+  private captureFormState(): Record<string, string> {
+    const formState: Record<string, string> = {};
+    const fieldInputs = document.querySelectorAll('.dynamic-field-input') as NodeListOf<HTMLInputElement | HTMLTextAreaElement>;
+    
+    fieldInputs.forEach((input) => {
+      const fieldName = input.dataset.fieldName;
+      if (fieldName) {
+        formState[fieldName] = input.value;
+      }
+    });
+    
+    return formState;
+  }
+
+  private restoreFormState(formData: Record<string, string>): void {
+    const fieldInputs = document.querySelectorAll('.dynamic-field-input') as NodeListOf<HTMLInputElement | HTMLTextAreaElement>;
+    
+    fieldInputs.forEach((input) => {
+      const fieldName = input.dataset.fieldName;
+      if (fieldName && formData[fieldName] !== undefined) {
+        input.value = formData[fieldName];
+      }
+    });
+  }
+
+  private validateFieldInput(fieldName: string, value: string): boolean {
+    // Basic length validation
+    if (fieldName.length > 100) {
+      console.warn(`Field name too long: ${fieldName}`);
+      return false;
+    }
+    
+    if (value.length > 1000) {
+      console.warn(`Field value too long for ${fieldName}`);
+      return false;
+    }
+    
+    // Field name should only contain safe characters
+    const safeFieldNamePattern = /^[a-zA-Z0-9_\-\s]+$/;
+    if (!safeFieldNamePattern.test(fieldName)) {
+      console.warn(`Unsafe field name: ${fieldName}`);
+      return false;
+    }
+    
+    return true;
+  }
 
   generateMarkdownTable(headers: string[], rows: string[][]): string {
     let markdown = '| ' + headers.join(' | ') + ' |\n';
