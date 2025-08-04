@@ -34,6 +34,13 @@ const { title = 'PetaTas' } = Astro.props;
                 Paste Markdown
               </button>
               <button 
+                class="btn btn-secondary btn-sm" 
+                data-testid="add-task-button"
+                id="add-task-button"
+              >
+                Add Task
+              </button>
+              <button 
                 class="btn btn-outline btn-sm" 
                 data-testid="export-button"
                 id="export-button"
@@ -65,6 +72,24 @@ const { title = 'PetaTas' } = Astro.props;
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <input type="checkbox" id="add-task-modal" class="modal-toggle" />
+    <div class="modal">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">Add New Task</h3>
+        <form id="add-task-form" class="space-y-4">
+          <!-- All fields will be dynamically inserted here -->
+          <div id="dynamic-fields-container"></div>
+          
+          <div class="modal-action">
+            <label for="add-task-modal" class="btn btn-ghost">Cancel</label>
+            <button type="submit" class="btn btn-primary">Add Task</button>
+          </div>
+        </form>
+      </div>
+      <label class="modal-backdrop" for="add-task-modal"></label>
     </div>
 
     <!-- Toast notifications -->
