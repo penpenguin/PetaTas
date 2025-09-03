@@ -41,6 +41,14 @@ const { title = 'PetaTas' } = Astro.props;
                 Add Task
               </button>
               <button 
+                class="btn btn-error btn-outline btn-sm" 
+                data-testid="clear-all-button"
+                id="clear-all-button"
+                title="Clear all tasks"
+              >
+                Clear All
+              </button>
+              <button 
                 class="btn btn-outline btn-sm" 
                 data-testid="export-button"
                 id="export-button"
@@ -91,6 +99,7 @@ const { title = 'PetaTas' } = Astro.props;
       </div>
       <label class="modal-backdrop" for="add-task-modal"></label>
     </div>
+
 
     <!-- Toast notifications -->
     <div class="toast toast-end" id="toast-container">
