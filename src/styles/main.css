@@ -41,7 +41,8 @@ body {
 }
 
 .list-row {
-  @apply flex items-center gap-3 p-3 bg-base-200 rounded-lg hover:bg-base-300 transition-colors;
+  @apply flex items-center gap-3 p-3 bg-base-200 hover:bg-base-300 transition-colors;
+  border-radius: var(--rounded-box);
 }
 
 /* Status-based styling for instant visual feedback */
@@ -75,12 +76,14 @@ body {
   @apply min-h-[2rem] flex items-center;
   word-wrap: break-word;
   white-space: pre-wrap;
+  border-radius: var(--rounded-box);
 }
 
 .notes-input {
   @apply min-h-[2rem] resize-none;
   font-family: inherit;
   line-height: 1.4;
+  border-radius: var(--rounded-box);
 }
 
 .notes-input:focus {
@@ -101,7 +104,8 @@ body {
 }
 
 .alert {
-  @apply flex items-center gap-2 p-4 rounded-lg shadow-lg;
+  @apply flex items-center gap-2 p-4 shadow-lg;
+  border-radius: var(--rounded-box);
 }
 
 .alert-success {
@@ -127,7 +131,8 @@ body {
 
 /* Button styles */
 .btn {
-  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors;
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2 font-medium transition-colors;
+  border-radius: var(--rounded-btn);
 }
 
 .btn-primary {

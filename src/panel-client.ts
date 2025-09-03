@@ -625,7 +625,7 @@ class PetaTasClient {
     const notesInput = existingRow.querySelector('.notes-input') as HTMLTextAreaElement;
     if (notesDisplay && notesInput) {
       notesDisplay.textContent = task.notes || 'Add notes...';
-      notesDisplay.className = `notes-display text-sm text-gray-500 cursor-pointer hover:bg-gray-100 rounded px-2 py-1 transition-colors ${task.notes ? '' : 'italic text-gray-400'}`;
+      notesDisplay.className = `notes-display text-sm text-gray-500 cursor-pointer hover:bg-gray-100 rounded-[var(--rounded-box)] px-2 py-1 transition-colors ${task.notes ? '' : 'italic text-gray-400'}`;
       notesInput.value = task.notes;
     }
     
@@ -744,7 +744,7 @@ class PetaTasClient {
       ? Object.entries(task.additionalColumns)
           .filter(([, value]) => value.trim() !== '')
           .map(([header, value]) => `
-            <div class="text-xs text-gray-600 bg-gray-100 rounded px-2 py-1 inline-block mr-1 mb-1">
+            <div class="text-xs text-gray-600 bg-gray-100 rounded-[var(--rounded-badge)] px-2 py-1 inline-block mr-1 mb-1">
               <strong>${escapeHtml(header)}:</strong> ${escapeHtml(value)}
             </div>
           `).join('')
@@ -766,14 +766,14 @@ class PetaTasClient {
           ${additionalColumnsHtml ? `<div class="mt-1">${additionalColumnsHtml}</div>` : ''}
           <div class="notes-container mt-2">
             <textarea 
-              class="notes-input hidden w-full bg-transparent border border-gray-300 rounded px-2 py-1 text-sm resize-none outline-none focus:border-primary focus:ring-1 focus:ring-primary" 
+              class="notes-input hidden w-full bg-transparent border border-gray-300 rounded-[var(--rounded-box)] px-2 py-1 text-sm resize-none outline-none focus:border-primary focus:ring-1 focus:ring-primary" 
               rows="2"
               placeholder="Add notes..."
               data-task-id="${escapeHtml(task.id)}"
               id="notes-input-${escapeHtml(task.id)}"
             >${escapeHtml(task.notes)}</textarea>
             <div 
-              class="notes-display text-sm text-gray-500 cursor-pointer hover:bg-gray-100 rounded px-2 py-1 transition-colors ${task.notes ? '' : 'italic text-gray-400'}" 
+              class="notes-display text-sm text-gray-500 cursor-pointer hover:bg-gray-100 rounded-[var(--rounded-box)] px-2 py-1 transition-colors ${task.notes ? '' : 'italic text-gray-400'}" 
               data-task-id="${escapeHtml(task.id)}"
               id="notes-display-${escapeHtml(task.id)}"
               title="Click to edit notes"
@@ -786,7 +786,7 @@ class PetaTasClient {
           <div class="timer-display ${isTimerRunning ? 'running' : ''}">${elapsedTime}</div>
           <input 
             type="number" 
-            class="timer-minutes-input w-16 text-xs border rounded px-1 py-0.5 text-center"
+            class="timer-minutes-input w-16 text-xs border rounded-[var(--rounded-btn)] px-1 py-0.5 text-center"
             value="${Math.round(task.elapsedMs / 60000)}"
             min="0"
             step="1"
@@ -1141,7 +1141,7 @@ class PetaTasClient {
         
         // Update display text
         notesDisplay.textContent = newNotes || 'Add notes...';
-        notesDisplay.className = `notes-display text-sm text-gray-500 cursor-pointer hover:bg-gray-100 rounded px-2 py-1 transition-colors ${newNotes ? '' : 'italic text-gray-400'}`;
+      notesDisplay.className = `notes-display text-sm text-gray-500 cursor-pointer hover:bg-gray-100 rounded-[var(--rounded-box)] px-2 py-1 transition-colors ${newNotes ? '' : 'italic text-gray-400'}`;
         
         // Save to storage
         this.saveTasks().catch(error => {
@@ -1149,7 +1149,7 @@ class PetaTasClient {
           // Revert changes on save failure
           task.notes = oldNotes;
           notesDisplay.textContent = oldNotes || 'Add notes...';
-          notesDisplay.className = `notes-display text-sm text-gray-500 cursor-pointer hover:bg-gray-100 rounded px-2 py-1 transition-colors ${oldNotes ? '' : 'italic text-gray-400'}`;
+          notesDisplay.className = `notes-display text-sm text-gray-500 cursor-pointer hover:bg-gray-100 rounded-[var(--rounded-box)] px-2 py-1 transition-colors ${oldNotes ? '' : 'italic text-gray-400'}`;
           notesInput.value = oldNotes;
           this.showToast('Failed to save notes. Please try again.', 'error');
         });

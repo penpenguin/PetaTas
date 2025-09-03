@@ -25,6 +25,10 @@ export default {
           "success": "#10b981",
           "warning": "#f59e0b",
           "error": "#ef4444",
+          // Ultra sharp default radii
+          "rounded-box": "0.125rem",   // 2px for cards/modals/containers
+          "rounded-btn": "0.125rem",   // 2px for buttons
+          "rounded-badge": "0.125rem", // 2px for badges
         },
         dark: {
           "primary": "#60a5fa",
@@ -39,6 +43,10 @@ export default {
           "success": "#34d399",
           "warning": "#fbbf24",
           "error": "#f87171",
+          // Ultra sharp default radii
+          "rounded-box": "0.125rem",   // 2px for cards/modals/containers
+          "rounded-btn": "0.125rem",   // 2px for buttons
+          "rounded-badge": "0.125rem", // 2px for badges
         },
       },
     ],
