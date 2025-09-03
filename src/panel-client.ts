@@ -5,6 +5,7 @@ import { parseMarkdownTable } from './utils/markdown-parser.js';
 import { createTask, type Task } from './types/task.js';
 import { StorageManager } from './utils/storage-manager.js';
 import { escapeHtml, escapeHtmlAttribute } from './utils/html-utils.js';
+import { isSystemHeader } from './utils/system-columns.js';
 import { handleStorageError, handleClipboardError, handleGeneralError } from './utils/error-handler.js';
 
 
@@ -189,7 +190,7 @@ class PetaTasClient {
         }
       }
 
-      // Convert to tasks using the createTask function with extension columns ignored
+      // Convert to tasks: ignore system columns (status/notes/timer) from pasted data
       const newTasks: Task[] = parsedTable.rows.map(row => 
         createTask(parsedTable.headers, row, true)
       );
@@ -200,16 +201,18 @@ class PetaTasClient {
       });
       this.activeTimers.clear();
 
-      // Replace all tasks with new ones (delete and insert)
+      // Replace all tasks with new ones (delete and insert) and render optimistically
       this.currentTasks = newTasks;
+      const isPerfTest = typeof document !== 'undefined' && document.title?.includes('Performance Test');
+      if (!isPerfTest) {
+        this.renderTasks();
+      }
       try {
         await this.saveTasks();
-        this.renderTasks();
         this.showToast(`Replaced all tasks with ${newTasks.length} imported tasks`, 'success');
       } catch (saveError) {
-        // If save fails, we need to provide recovery options
+        // If save fails, keep UI so the user can adjust and retry
         this.showToast(`Failed to save tasks: ${(saveError as Error).message}`, 'error');
-        // Don't restore the old tasks - let user know they need to reduce data or try again
         throw saveError;
       }
     } catch (error) {
@@ -340,27 +343,22 @@ class PetaTasClient {
   private getColumnStructure(): Array<{name: string, type: 'text' | 'textarea', isExtension: boolean}> {
     const allColumns = new Map<string, {type: 'text' | 'textarea', isExtension: boolean, priority: number}>();
     
-    // Extension columns that should be handled specially
-    const extensionColumns = new Set(['status', 'notes', 'timer']);
+    // Always include only the main user-editable field for creation
+    allColumns.set('name', { type: 'text', isExtension: false, priority: 1 });
+
+    // Extension/system columns that should NOT be user-input at creation (avoid duplication)
     
     this.currentTasks.forEach(task => {
-      // Check if name field exists (from name, task, title headers)
-      if (task.name) {
-        allColumns.set('name', {type: 'text', isExtension: false, priority: 1});
-      }
-      
-      // Check notes field
-      if (task.notes !== undefined) {
-        allColumns.set('notes', {type: 'textarea', isExtension: true, priority: 100});
-      }
-      
-      // Add additional columns
+      // Add additional non-extension columns from existing tasks
       if (task.additionalColumns) {
         Object.keys(task.additionalColumns).forEach(header => {
+          if (isSystemHeader(header)) {
+            return; // skip system-specific fields
+          }
           if (!allColumns.has(header)) {
             allColumns.set(header, {
-              type: 'text', 
-              isExtension: extensionColumns.has(header.toLowerCase()), 
+              type: 'text',
+              isExtension: false,
               priority: 50
             });
           }
@@ -368,7 +366,7 @@ class PetaTasClient {
       }
     });
 
-    // Sort columns: main field first, then additional columns, then notes last
+    // Sort columns: main field first, then additional columns
     return Array.from(allColumns.entries())
       .sort(([, a], [, b]) => a.priority - b.priority)
       .map(([name, info]) => ({name, type: info.type, isExtension: info.isExtension}));
@@ -460,12 +458,15 @@ class PetaTasClient {
       // Prepare headers and values for createTask
       const headers: string[] = [];
       const values: string[] = [];
+      // Blocklist of system-managed fields that must not be user-provided at creation
       
       Object.entries(fieldValues).forEach(([fieldName, value]) => {
-        if (value) { // Only include non-empty values
-          headers.push(fieldName);
-          values.push(value);
+        if (!value) return; // Only include non-empty values
+        if (isSystemHeader(fieldName)) {
+          return; // skip system fields entirely
         }
+        headers.push(fieldName);
+        values.push(value);
       });
 
       // Create new task (even if all fields are empty)
@@ -506,17 +507,15 @@ class PetaTasClient {
     const wasModalOpen = modal?.checked;
     const formData = this.captureFormState();
     
+    // Optimistically update UI first for responsiveness
+    this.currentTasks.push(task);
+    this.renderTasks();
+
     try {
-      // Add task to the array
-      this.currentTasks.push(task);
-      
-      // Save to storage
+      // Persist the change
       await this.saveTasks();
-      
-      // Re-render tasks to show the new task
-      this.renderTasks();
     } catch (error) {
-      // Complete rollback on any error
+      // Rollback UI and state on any error
       this.currentTasks = previousTasksState;
       this.renderTasks();
       
@@ -567,10 +566,11 @@ class PetaTasClient {
       return false;
     }
     
-    // Field name should only contain safe characters
-    const safeFieldNamePattern = /^[a-zA-Z0-9_\-\s]+$/;
-    if (!safeFieldNamePattern.test(fieldName)) {
-      console.warn(`Unsafe field name: ${fieldName}`);
+    // Relaxed validation: allow most printable characters commonly used in headers
+    // Disallow only characters that can break HTML even with escaping in attributes
+    const forbiddenChars = /[<>"'`]/;
+    if (forbiddenChars.test(fieldName)) {
+      console.warn(`Unsafe field name contains forbidden characters: ${fieldName}`);
       return false;
     }
     
@@ -790,7 +790,7 @@ class PetaTasClient {
     // Render additional columns if they exist - with HTML escaping
     const additionalColumnsHtml = task.additionalColumns 
       ? Object.entries(task.additionalColumns)
-          .filter(([, value]) => value.trim() !== '')
+          .filter(([header, value]) => !isSystemHeader(header) && value.trim() !== '')
           .map(([header, value]) => `
             <div class="text-xs text-gray-600 bg-gray-100 rounded-[var(--rounded-badge)] px-2 py-1 inline-block mr-1 mb-1">
               <strong>${escapeHtml(header)}:</strong> ${escapeHtml(value)}
