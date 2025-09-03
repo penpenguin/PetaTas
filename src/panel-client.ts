@@ -63,6 +63,7 @@ class PetaTasClient {
     const pasteButton = document.getElementById('paste-button');
     const exportButton = document.getElementById('export-button');
     const addTaskButton = document.getElementById('add-task-button');
+    const clearAllButton = document.getElementById('clear-all-button');
     
     if (pasteButton) {
       pasteButton.addEventListener('click', () => this.handlePasteClick());
@@ -75,11 +76,58 @@ class PetaTasClient {
     if (addTaskButton) {
       addTaskButton.addEventListener('click', () => this.handleAddTaskClick());
     }
+
+    if (clearAllButton) {
+      clearAllButton.addEventListener('click', () => this.handleClearAllClick());
+    }
     
     // Setup add task form submission
     const addTaskForm = document.getElementById('add-task-form');
     if (addTaskForm) {
       addTaskForm.addEventListener('submit', (e) => this.handleAddTaskSubmit(e));
+    }
+
+  }
+
+  handleClearAllClick(): void {
+    if (this.currentTasks.length === 0) {
+      this.showToast('No tasks to clear', 'warning');
+      return;
+    }
+
+    const confirmed = confirm(
+      `This will delete all ${this.currentTasks.length} tasks and timer states.\n\nAre you sure you want to continue?`
+    );
+    if (!confirmed) {
+      this.showToast('Clear cancelled', 'warning');
+      return;
+    }
+    void this.clearAllTasks();
+  }
+
+  private async clearAllTasks(): Promise<void> {
+    try {
+      // Stop and clear all active timers
+      this.activeTimers.forEach((timer) => clearInterval(timer.interval));
+      this.activeTimers.clear();
+
+      // Clear tasks in memory
+      this.currentTasks = [];
+
+      // Persist: clear timer states and save empty tasks array
+      await Promise.all([
+        this.storageManager.clearTimerStates(),
+        this.saveTasks()
+      ]);
+
+      // Update UI
+      this.renderTasks();
+      this.showToast('All tasks cleared', 'success');
+    } catch (error) {
+      handleGeneralError(error, 'high', { 
+        module: 'PetaTasClient', 
+        operation: 'clearAllTasks' 
+      }, `Failed to clear all tasks: ${(error as Error).message}`);
     }
   }
 
