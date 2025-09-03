@@ -1,10 +1,5 @@
 # Repository Guidelines
 
-## Communication / Language
-- 本プロジェクトに関する会話は原則として日本語で行います。
-- コミットメッセージやコード内コメントは英語でも問題ありません。
-- 指示言語に合わせ、日本語指定の場合は日本語で応答し、必要に応じて英訳を補足します。
-
 ## Project Structure & Module Organization
 ```
 src/

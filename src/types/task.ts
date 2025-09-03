@@ -1,4 +1,6 @@
 // Task type definitions and validation for PetaTas
+import { isSystemHeader } from '../utils/system-columns.js';
+import { parseTimerToMs } from '../utils/time-utils.js';
 
 export type TaskStatus = 'todo' | 'in-progress' | 'done';
 
@@ -59,8 +61,7 @@ export function isValidTask(obj: unknown): obj is Task {
   return isBasicValid;
 }
 
-// Extension-specific columns that should be ignored during import to preserve existing values
-const EXTENSION_COLUMNS = new Set(['status', 'notes', 'timer', 'description', 'comment', 'state']);
+// Note: System/extension-managed columns are identified via isSystemHeader()
 
 // Create a new task from markdown table row
 export function createTask(headers: string[], row: string[], ignoreExtensionColumns: boolean = false): Task {
@@ -82,7 +83,7 @@ export function createTask(headers: string[], row: string[], ignoreExtensionColu
     const normalizedHeader = header.toLowerCase().trim();
     
     // Skip extension columns if ignoreExtensionColumns is true
-    if (ignoreExtensionColumns && EXTENSION_COLUMNS.has(normalizedHeader)) {
+    if (ignoreExtensionColumns && isSystemHeader(header)) {
       return;
     }
     
@@ -90,10 +91,15 @@ export function createTask(headers: string[], row: string[], ignoreExtensionColu
       case 'name':
       case 'task':
       case 'title':
+      case '名前':
+      case '題名':
+      case '件名':
         task.name = value;
         break;
       case 'status':
-      case 'state': {
+      case 'state':
+      case '状態':
+      case 'ステータス': {
         const normalizedStatus = value.toLowerCase().trim();
         if (['todo', 'in-progress', 'done'].includes(normalizedStatus)) {
           task.status = normalizedStatus as TaskStatus;
@@ -103,8 +109,21 @@ export function createTask(headers: string[], row: string[], ignoreExtensionColu
       case 'notes':
       case 'description':
       case 'comment':
+      case 'メモ':
+      case '説明':
+      case 'コメント':
         task.notes = value;
         break;
+      case 'timer':
+      case 'time':
+      case '経過時間':
+      case 'タイマー': {
+        const ms = parseTimerToMs(value);
+        if (Number.isFinite(ms) && ms >= 0) {
+          task.elapsedMs = ms;
+        }
+        break;
+      }
       default:
         // Store all additional columns in additionalColumns
         if (task.additionalColumns) {
