@@ -50,21 +50,24 @@ dist/
 ├── manifest.json          # Chrome Extension manifest
 ├── service-worker.js      # Background service worker
 ├── panel-client.js        # Main client-side JavaScript
-├── panel.css              # daisyUI styles
-├── hoisted.js             # Astro-generated JavaScript
-└── panel/
-    └── index.html         # Side panel HTML
+├── index.html             # Side panel HTML (built)
+├── favicon.ico            # Extension favicon
+└── assets/                # Static assets
+    ├── index.<hash>.css   # Bundled CSS (hashed)
+    ├── icon-16.png
+    ├── icon-48.png
+    └── icon-128.png
 ```
 
 ### 6. Development
 
 The extension is built using:
-- **Astro 2.x**: Static site generator
+- **Astro 5.x**: Static site generator
 - **daisyUI**: Tailwind CSS component library
   - Policy: favor utility classes and built-in themes; minimize custom CSS and avoid overriding core component classes. Prefer semantic classes (e.g., `badge-*`) and data attributes for state.
 - **TypeScript**: Type safety
 - **Chrome Extension Manifest V3**: Modern extension platform
-- **Vitest**: 57 passing tests with TDD approach
+- **Vitest**: 171 passing tests with TDD approach
 
 ### 7. Troubleshooting
 
