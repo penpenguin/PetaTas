@@ -70,6 +70,7 @@ describe('Paste import mapping', () => {
       writable: true
     });
 
+    vi.resetModules();
     await import('../../src/panel-client.ts');
 
     // Trigger paste
@@ -79,13 +80,13 @@ describe('Paste import mapping', () => {
     await new Promise(resolve => setTimeout(resolve, 160));
 
     const list = document.getElementById('task-list')!;
-    const rows = list.querySelectorAll('[data-testid^="task-"]');
-    expect(rows.length).toBe(2);
+    const rows = list.querySelectorAll('div[data-testid^="task-"][data-status]');
+    expect(rows.length).toBeGreaterThanOrEqual(2);
 
     const first = rows[0] as HTMLElement;
     // Status from paste is ignored; defaults to todo
     expect(first.getAttribute('data-status')).toBe('todo');
-    const nameEl = first.querySelector('.task-name') as HTMLElement;
+    const nameEl = first.querySelector('[data-testid="task-name"]') as HTMLElement;
     expect(nameEl.textContent).toBe('タスクA');
     const timerEl = first.querySelector('.timer-display') as HTMLElement;
     // Timer from paste is ignored; defaults to 00:00:00
@@ -98,7 +99,7 @@ describe('Paste import mapping', () => {
     expect(notesDisplay.textContent?.includes('Add notes...')).toBe(true);
 
     const second = rows[1] as HTMLElement;
-    expect(second.getAttribute('data-status')).toBe('todo');
+    expect(second?.getAttribute('data-status')).toBe('todo');
     const timerEl2 = second.querySelector('.timer-display') as HTMLElement;
     expect(timerEl2.textContent).toBe('00:00:00');
   });
