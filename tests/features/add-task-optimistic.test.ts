@@ -130,7 +130,7 @@ describe('Add Task UX (optimistic + dynamic fields)', () => {
     const list = document.getElementById('task-list')!;
     const empty = document.getElementById('empty-state')!;
     expect(list.classList.contains('hidden')).toBe(false);
-    const renderedName = list.querySelector('.task-name') as HTMLElement;
+    const renderedName = list.querySelector('[data-testid="task-name"]') as HTMLElement;
     expect(renderedName?.textContent).toBe('Optimistic Task');
     expect(empty.classList.contains('hidden')).toBe(true);
 
