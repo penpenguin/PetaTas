@@ -125,3 +125,35 @@
 4. **開発者ツールの Network タブ**
    - CSS/JS ファイルが正しく読み込まれているか確認
    - 404 エラーがないか確認
+
+### 9. Git 小ネタ: 複数行コミットメッセージの書き方
+
+`git commit -m "..."` のダブルクォート内で書いた `\n` は改行として解釈されず、そのまま「バックスラッシュ+n」の文字列になります。複数行のコミットメッセージにしたい場合は以下のいずれかを使います。
+
+1) `-m` を複数回使う（件名＋本文）
+
+```sh
+git commit -m "feat(ui): migrate to daisyUI and add theme util" \
+           -m $'- Introduce theme util and integrate with panel-client\n- Adopt daisyUI classes and adjust Tailwind config\n- Update main.css and index.astro to new structure\n- Update dependencies'
+```
+
+2) ヒアドキュメントで本文を渡す
+
+```sh
+git commit -F - <<'MSG'
+feat(ui): migrate to daisyUI and add theme util
+
+- Introduce theme util and integrate with panel-client
+- Adopt daisyUI classes and adjust Tailwind config
+- Update main.css and index.astro to new structure
+- Update dependencies
+MSG
+```
+
+3) エディタで直接入力（推奨）
+
+```sh
+git commit  # 件名1行 + 空行 + 本文
+```
+
+補足: 直近のコミットを修正する場合は `git commit --amend` を使い、既に push 済みなら `git push --force-with-lease`（共有ブランチでは注意）を使います。
