@@ -51,7 +51,6 @@ dist/
 ├── service-worker.js      # Background service worker
 ├── panel-client.js        # Main client-side JavaScript
 ├── panel.css              # daisyUI styles
-├── task-list.css          # Task list component styles
 ├── hoisted.js             # Astro-generated JavaScript
 └── panel/
     └── index.html         # Side panel HTML
@@ -62,6 +61,7 @@ dist/
 The extension is built using:
 - **Astro 2.x**: Static site generator
 - **daisyUI**: Tailwind CSS component library
+  - Policy: favor utility classes and built-in themes; minimize custom CSS and avoid overriding core component classes. Prefer semantic classes (e.g., `badge-*`) and data attributes for state.
 - **TypeScript**: Type safety
 - **Chrome Extension Manifest V3**: Modern extension platform
 - **Vitest**: 57 passing tests with TDD approach

@@ -44,7 +44,7 @@
 2. **よくあるエラーと対処法**
    - `Chrome Extension environment not detected` → Service Worker が動作していない
    - `Clipboard API not available` → HTTPS または localhost でテストする
-   - CSS が適用されない → panel.css, task-list.css のパスを確認
+   - CSS が適用されない → panel.css などビルド済み CSS のパスを確認
    - JavaScript エラー → panel-client.js の構文エラー
 
 ### 4. 権限の確認
