@@ -48,7 +48,7 @@ describe('Status badge uses daisyUI semantics', () => {
     dom.window.close()
   })
 
-  it('renders a .status-badge with daisyUI badge classes and no row bg/border overrides', async () => {
+  it('places status badge next to checkbox and colors left border by status', async () => {
     vi.resetModules()
     await import('../../src/panel-client.ts')
     // Allow async initialize/render to settle
@@ -62,11 +62,34 @@ describe('Status badge uses daisyUI semantics', () => {
       const badge = row.querySelector('.status-badge') as HTMLElement
       expect(badge).toBeTruthy()
       expect(badge.className).toMatch(/\bbadge\b/)
-      // Ensure row no longer relies on bg-warning/10 or border-l-* for status
-      expect(row.className).not.toMatch(/\bborder-l-\d\b|bg-warning\/10|bg-success\/10|opacity-70/)
+      // Badge should be immediately next to the checkbox
+      const checkbox = row.querySelector('input[type="checkbox"]') as HTMLInputElement
+      expect(checkbox).toBeTruthy()
+      expect(checkbox.nextElementSibling).toBe(badge)
+      // They should be visually inline (parent has flex)
+      const parent = checkbox.parentElement as HTMLElement
+      expect(parent.className).toMatch(/\bflex\b/)
+      expect(parent.className).toMatch(/\bitems-center\b/)
+      // No space distribution; use gap-based spacing
+      expect(parent.className).not.toMatch(/\bjustify-(between|evenly|around)\b/)
+      expect(parent.className).toMatch(/\bgap-3\b/)
+
+      // Timer controls should be in the same header row, after the badge
+      const timerControls = parent.querySelector('.timer-controls') as HTMLElement | null
+      expect(timerControls).toBeTruthy()
+      expect(badge.nextElementSibling).toBe(timerControls)
+      // Timer section has a bit more left margin for visual separation
+      expect((timerControls as HTMLElement).className).toMatch(/\bml-4\b/)
+
+      // Card left border colors should reflect status (no background overlays)
+      expect(row.className).toMatch(/\bborder-l-4\b/)
 
       const status = row.getAttribute('data-status')
       const expected = status === 'in-progress' ? 'IN PROGRESS' : status === 'done' ? 'DONE' : 'TODO'
+      const expectedBorder = status === 'in-progress' ? 'border-warning' : status === 'done' ? 'border-success' : 'border-base-300'
+      expect(row.className).toMatch(new RegExp(`\\b${expectedBorder}\\b`))
+      // Still avoid bg overlays & opacity hacks
+      expect(row.className).not.toMatch(/bg-warning\/10|bg-success\/10|opacity-70/)
       expect(badge.getAttribute('aria-label')).toBe(`Status: ${expected}`)
     })
   })
