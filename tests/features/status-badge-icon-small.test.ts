@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { JSDOM } from 'jsdom'
 
-describe('Status badge uses daisyUI semantics', () => {
+describe('Status badge shows only icon (tooltip for text)', () => {
   let dom: JSDOM
 
   beforeEach(() => {
@@ -48,49 +48,30 @@ describe('Status badge uses daisyUI semantics', () => {
     dom.window.close()
   })
 
-  it('places status badge next to checkbox and colors left border by status', async () => {
+  it('renders only an SVG status icon and no visible text in each status badge', async () => {
     vi.resetModules()
     await import('../../src/panel-client.ts')
-    // Allow async initialize/render to settle
     await Promise.resolve()
     await new Promise((r) => setTimeout(r, 0))
 
     const rows = Array.from(document.querySelectorAll('div[data-testid^="task-"][data-status]')) as HTMLElement[]
-    expect(rows.length).toBeGreaterThan(0)
+    expect(rows.length).toBe(3)
 
     rows.forEach((row) => {
+      const status = row.getAttribute('data-status') as 'todo' | 'in-progress' | 'done'
       const badge = row.querySelector('.status-badge') as HTMLElement
       expect(badge).toBeTruthy()
-      expect(badge.className).toMatch(/\bbadge\b/)
-      // Badge should be immediately next to the checkbox
-      const checkbox = row.querySelector('input[type="checkbox"]') as HTMLInputElement
-      expect(checkbox).toBeTruthy()
-      expect(checkbox.nextElementSibling).toBe(badge)
-      // They should be visually inline (parent has flex)
-      const parent = checkbox.parentElement as HTMLElement
-      expect(parent.className).toMatch(/\bflex\b/)
-      expect(parent.className).toMatch(/\bitems-center\b/)
-      // No space distribution; use gap-based spacing
-      expect(parent.className).not.toMatch(/\bjustify-(between|evenly|around)\b/)
-      expect(parent.className).toMatch(/\bgap-3\b/)
 
-      // Timer controls should be in the same header row, after the badge
-      const timerControls = parent.querySelector('.timer-controls') as HTMLElement | null
-      expect(timerControls).toBeTruthy()
-      expect(badge.nextElementSibling).toBe(timerControls)
-      // Timer section has a bit of left margin for visual separation (reduced)
-      expect((timerControls as HTMLElement).className).toMatch(/\bml-2\b/)
+      const icon = badge.querySelector('svg.status-icon') as SVGElement | null
+      expect(icon).toBeTruthy()
+      expect(icon?.getAttribute('data-icon')).toBe(status)
+      // Icon-only badge: icon should not be hidden on md and up
+      expect(icon?.getAttribute('class') || '').not.toMatch(/\bmd:hidden\b/)
 
-      // Card left border colors should reflect status (no background overlays)
-      expect(row.className).toMatch(/\bborder-l-4\b/)
-
-      const status = row.getAttribute('data-status')
-      const expected = status === 'in-progress' ? 'IN PROGRESS' : status === 'done' ? 'DONE' : 'TODO'
-      const expectedBorder = status === 'in-progress' ? 'border-warning' : status === 'done' ? 'border-success' : 'border-base-300'
-      expect(row.className).toMatch(new RegExp(`\\b${expectedBorder}\\b`))
-      // Still avoid bg overlays & opacity hacks
-      expect(row.className).not.toMatch(/bg-warning\/10|bg-success\/10|opacity-70/)
-      expect(badge.getAttribute('aria-label')).toBe(`Status: ${expected}`)
+      // Icon-only: no visible text node/span inside the badge
+      const textSpan = badge.querySelector('span') as HTMLElement | null
+      expect(textSpan).toBeNull()
+      expect((badge.textContent || '').trim()).toBe('')
     })
   })
 })

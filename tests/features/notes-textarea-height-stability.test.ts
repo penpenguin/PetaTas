@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { JSDOM } from 'jsdom'
 
-describe('Notes area aligns with daisyUI form-control', () => {
+describe('Notes textarea height remains stable on timer ops', () => {
   let dom: JSDOM
 
   beforeEach(() => {
@@ -9,7 +9,7 @@ describe('Notes area aligns with daisyUI form-control', () => {
       <div id="task-list" class="list hidden"></div>
       <div id="empty-state"></div>
       <div id="toast-container"></div>
-    </body></html>`, { url: 'chrome-extension://test/panel.html' })
+    </body></html>`)
 
     // @ts-expect-error test env
     global.window = dom.window as any
@@ -31,7 +31,7 @@ describe('Notes area aligns with daisyUI form-control', () => {
       storage: {
         sync: {
           get: vi.fn().mockResolvedValue({ tasks: [
-            { id: 'n1', name: 'Task with notes', status: 'todo', notes: 'Hello', elapsedMs: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), additionalColumns: {} }
+            { id: 't1', name: 'Test', status: 'todo', notes: '', elapsedMs: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), additionalColumns: {} }
           ] }),
           set: vi.fn().mockResolvedValue(undefined)
         }
@@ -46,21 +46,39 @@ describe('Notes area aligns with daisyUI form-control', () => {
     dom.window.close()
   })
 
-  it('wraps notes UI with .form-control and uses daisyUI-friendly utilities', async () => {
+  it('keeps rows=1 and class list unchanged across timer start/stop', async () => {
     vi.resetModules()
     await import('../../src/panel-client.ts')
-
-    const container = document.querySelector('.notes-container') as HTMLElement
-    expect(container).toBeTruthy()
-    expect(container.className).toMatch(/\bform-control\b/)
+    await Promise.resolve()
+    await new Promise((r) => setTimeout(r, 0))
 
     const textarea = document.querySelector('textarea.notes-input') as HTMLTextAreaElement
     expect(textarea).toBeTruthy()
+    expect(textarea.getAttribute('rows')).toBe('1')
     expect(textarea.className).toMatch(/\btextarea\b/)
     expect(textarea.className).toMatch(/\btextarea-bordered\b/)
+    expect(textarea.className).not.toMatch(/\bhidden\b/)
+    // Ensure no DaisyUI min-height forces multi-line height
+    expect(textarea.className).toMatch(/\bmin-h-0\b/)
+    const initialClass = textarea.className
 
-    // No separate display block is required anymore
-    const display = document.querySelector('.notes-display') as HTMLElement
-    expect(display).toBeNull()
+    const timerBtn = document.querySelector('button[data-action="timer"]') as HTMLButtonElement
+    expect(timerBtn).toBeTruthy()
+
+    // Start timer
+    timerBtn.click()
+    await Promise.resolve()
+    await new Promise((r) => setTimeout(r, 0))
+    const afterStart = document.querySelector('textarea.notes-input') as HTMLTextAreaElement
+    expect(afterStart.getAttribute('rows')).toBe('1')
+    expect(afterStart.className).toBe(initialClass)
+
+    // Stop timer
+    timerBtn.click()
+    await Promise.resolve()
+    await new Promise((r) => setTimeout(r, 0))
+    const afterStop = document.querySelector('textarea.notes-input') as HTMLTextAreaElement
+    expect(afterStop.getAttribute('rows')).toBe('1')
+    expect(afterStop.className).toBe(initialClass)
   })
 })

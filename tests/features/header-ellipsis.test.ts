@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { JSDOM } from 'jsdom'
 
-describe('Notes area aligns with daisyUI form-control', () => {
+describe('Header layout at 360px uses nowrap; status badge is icon-only', () => {
   let dom: JSDOM
 
   beforeEach(() => {
@@ -16,6 +16,7 @@ describe('Notes area aligns with daisyUI form-control', () => {
     // @ts-expect-error test env
     global.document = dom.window.document as any
 
+    // Provide matchMedia stub for theme.js
     const mql = {
       matches: false,
       media: '(prefers-color-scheme: dark)',
@@ -27,11 +28,22 @@ describe('Notes area aligns with daisyUI form-control', () => {
     // @ts-expect-error stub
     window.matchMedia = vi.fn().mockReturnValue(mql)
 
+    // Provide localStorage stub to avoid opaque origin issues
+    Object.defineProperty(window, 'localStorage', {
+      value: {
+        getItem: vi.fn(),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+        clear: vi.fn(),
+      },
+      configurable: true,
+    })
+
     const mockChrome = {
       storage: {
         sync: {
           get: vi.fn().mockResolvedValue({ tasks: [
-            { id: 'n1', name: 'Task with notes', status: 'todo', notes: 'Hello', elapsedMs: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), additionalColumns: {} }
+            { id: 'x', name: 'X', status: 'in-progress', notes: '', elapsedMs: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), additionalColumns: {} }
           ] }),
           set: vi.fn().mockResolvedValue(undefined)
         }
@@ -46,21 +58,22 @@ describe('Notes area aligns with daisyUI form-control', () => {
     dom.window.close()
   })
 
-  it('wraps notes UI with .form-control and uses daisyUI-friendly utilities', async () => {
+  it('renders header with whitespace-nowrap and an icon-only status badge', async () => {
     vi.resetModules()
     await import('../../src/panel-client.ts')
 
-    const container = document.querySelector('.notes-container') as HTMLElement
-    expect(container).toBeTruthy()
-    expect(container.className).toMatch(/\bform-control\b/)
+    const row = document.querySelector('.list-row') as HTMLElement
+    expect(row).toBeTruthy()
 
-    const textarea = document.querySelector('textarea.notes-input') as HTMLTextAreaElement
-    expect(textarea).toBeTruthy()
-    expect(textarea.className).toMatch(/\btextarea\b/)
-    expect(textarea.className).toMatch(/\btextarea-bordered\b/)
+    const header = row.querySelector('div.flex.items-center') as HTMLElement
+    expect(header).toBeTruthy()
+    expect(header.className).toMatch(/\bwhitespace-nowrap\b/)
 
-    // No separate display block is required anymore
-    const display = document.querySelector('.notes-display') as HTMLElement
-    expect(display).toBeNull()
+    const badge = row.querySelector('.status-badge') as HTMLElement
+    expect(badge).toBeTruthy()
+    // Icon-only: no fixed width and no inner text span
+    expect(badge.className).toMatch(/\bbadge\b/)
+    expect(badge.querySelector('svg.status-icon')).toBeTruthy()
+    expect(badge.querySelector('span')).toBeNull()
   })
 })
