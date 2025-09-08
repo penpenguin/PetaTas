@@ -40,8 +40,9 @@ export function initSystemThemeSync(doc: Document = document, win: Window = wind
     const onChange = (e: MediaQueryListEvent) => apply(e.matches)
     if (typeof mql.addEventListener === 'function') {
       mql.addEventListener('change', onChange)
-    } else if (typeof mql.addListener === 'function') {
-      mql.addListener(onChange)
+    } else {
+      // Fallback for legacy environments
+      mql.onchange = onChange
     }
 
     // Also re-apply on window focus/visibility/page show to cover hosts that
