@@ -72,10 +72,9 @@ describe('daisyUI conformance in rendered task rows', () => {
     expect(badge.className).toMatch(/\bbadge\b/)
     expect(badge.className).toMatch(/\bbadge-md\b/)
 
-    const notesDisplay = row.querySelector('.notes-display') as HTMLElement
-    expect(notesDisplay).toBeTruthy()
-    expect(notesDisplay.className).toMatch(/text-base-content\/70/)
-    expect(notesDisplay.className).toMatch(/hover:bg-base-200/)
+    // Notes textarea is the primary editor (no separate display block)
+    const notesArea = row.querySelector('textarea.notes-input') as HTMLElement
+    expect(notesArea).toBeTruthy()
 
     const del = row.querySelector('button[data-action="delete"]') as HTMLElement
     expect(del).toBeTruthy()

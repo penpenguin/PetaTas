@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { JSDOM } from 'jsdom'
 
-describe('Header layout at 360px uses nowrap and ellipsis', () => {
+describe('Header layout at 360px uses nowrap; status badge is icon-only', () => {
   let dom: JSDOM
 
   beforeEach(() => {
@@ -15,6 +15,29 @@ describe('Header layout at 360px uses nowrap and ellipsis', () => {
     global.window = dom.window as any
     // @ts-expect-error test env
     global.document = dom.window.document as any
+
+    // Provide matchMedia stub for theme.js
+    const mql = {
+      matches: false,
+      media: '(prefers-color-scheme: dark)',
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    } as unknown as MediaQueryList
+    // @ts-expect-error stub
+    window.matchMedia = vi.fn().mockReturnValue(mql)
+
+    // Provide localStorage stub to avoid opaque origin issues
+    Object.defineProperty(window, 'localStorage', {
+      value: {
+        getItem: vi.fn(),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+        clear: vi.fn(),
+      },
+      configurable: true,
+    })
 
     const mockChrome = {
       storage: {
@@ -35,7 +58,7 @@ describe('Header layout at 360px uses nowrap and ellipsis', () => {
     dom.window.close()
   })
 
-  it('renders header with whitespace-nowrap and a truncating status badge', async () => {
+  it('renders header with whitespace-nowrap and an icon-only status badge', async () => {
     vi.resetModules()
     await import('../../src/panel-client.ts')
 
@@ -48,12 +71,9 @@ describe('Header layout at 360px uses nowrap and ellipsis', () => {
 
     const badge = row.querySelector('.status-badge') as HTMLElement
     expect(badge).toBeTruthy()
-    expect(badge.className).toMatch(/w-\[5rem\]/)
-    // Outer uses overflow-hidden, inner uses truncate
-    expect(badge.className).toMatch(/\boverflow-hidden\b/)
-
-    const inner = badge.querySelector('span') as HTMLElement
-    expect(inner).toBeTruthy()
-    expect(inner.className).toMatch(/\btruncate\b/)
+    // Icon-only: no fixed width and no inner text span
+    expect(badge.className).toMatch(/\bbadge\b/)
+    expect(badge.querySelector('svg.status-icon')).toBeTruthy()
+    expect(badge.querySelector('span')).toBeNull()
   })
 })

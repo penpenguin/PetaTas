@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { JSDOM } from 'jsdom'
 
-describe('Timer minutes input should not unhide notes-display', () => {
+describe('Timer minutes input should not show unrelated elements', () => {
   let dom: JSDOM
 
   beforeEach(() => {
@@ -35,7 +35,7 @@ describe('Timer minutes input should not unhide notes-display', () => {
     dom.window.close()
   })
 
-  it('keeps notes-display hidden after changing minutes', async () => {
+  it('does not create notes-display after changing minutes', async () => {
     vi.resetModules()
     await import('../../src/panel-client.ts')
     await Promise.resolve()
@@ -44,10 +44,8 @@ describe('Timer minutes input should not unhide notes-display', () => {
     const row = document.querySelector('.list-row') as HTMLElement
     expect(row).toBeTruthy()
 
-    const notesDisplay = row.querySelector('.notes-display') as HTMLElement
-    expect(notesDisplay).toBeTruthy()
-    // Initially hidden per render
-    expect(notesDisplay.className).toMatch(/\bhidden\b/)
+    const initialNotesDisplay = row.querySelector('.notes-display') as HTMLElement | null
+    expect(initialNotesDisplay).toBeNull()
 
     const input = row.querySelector('.timer-minutes-input') as HTMLInputElement
     expect(input).toBeTruthy()
@@ -58,8 +56,8 @@ describe('Timer minutes input should not unhide notes-display', () => {
     await Promise.resolve()
     await new Promise((r) => setTimeout(r, 0))
 
-    // Should remain hidden; no unexpected UI shown
-    expect(notesDisplay.className).toMatch(/\bhidden\b/)
+    // Should remain absent; no unexpected UI shown
+    const afterNotesDisplay = row.querySelector('.notes-display') as HTMLElement | null
+    expect(afterNotesDisplay).toBeNull()
   })
 })
-

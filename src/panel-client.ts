@@ -23,6 +23,11 @@ initSystemThemeSync();
 const PLAY_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>';
 const PAUSE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" aria-hidden="true" focusable="false"><path d="M6 5h4v14H6zM14 5h4v14h-4z" fill="currentColor"/></svg>';
 
+// Small status icons for badge (always visible; icon-only badge)
+const STATUS_TODO_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="status-icon w-4 h-4 align-middle" aria-hidden="true" focusable="false" data-icon="todo"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
+const STATUS_INPROGRESS_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="status-icon w-4 h-4 align-middle" aria-hidden="true" focusable="false" data-icon="in-progress"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const STATUS_DONE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="status-icon w-4 h-4 align-middle" aria-hidden="true" focusable="false" data-icon="done"><path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
 class PetaTasClient {
   private currentTasks: Task[] = [];
   private activeTimers = new Map<string, Timer>();
@@ -42,14 +47,14 @@ class PetaTasClient {
         return ' border-l-4 border-base-300'
     }
   }
-  private getStatusBadge(status: string): { text: string; cls: string; aria: string } {
+  private getStatusBadge(status: string): { text: string; cls: string; aria: string; icon: string } {
     switch (status) {
       case 'in-progress':
-        return { text: 'IN PROGRESS', cls: 'badge-warning', aria: 'Status: IN PROGRESS' }
+        return { text: 'IN PROGRESS', cls: 'badge-warning', aria: 'Status: IN PROGRESS', icon: STATUS_INPROGRESS_SVG }
       case 'done':
-        return { text: 'DONE', cls: 'badge-success', aria: 'Status: DONE' }
+        return { text: 'DONE', cls: 'badge-success', aria: 'Status: DONE', icon: STATUS_DONE_SVG }
       default:
-        return { text: 'TODO', cls: 'badge-ghost', aria: 'Status: TODO' }
+        return { text: 'TODO', cls: 'badge-ghost', aria: 'Status: TODO', icon: STATUS_TODO_SVG }
     }
   }
   
@@ -702,12 +707,8 @@ class PetaTasClient {
     }
     
     // Update notes display and input
-    const notesDisplay = existingRow.querySelector('.notes-display') as HTMLElement | null;
     const notesInput = existingRow.querySelector('.notes-input') as HTMLTextAreaElement | null;
-    if (notesDisplay && notesInput) {
-      const wasHidden = notesDisplay.classList.contains('hidden');
-      notesDisplay.textContent = task.notes || 'Add notes...';
-      notesDisplay.className = `notes-display ${wasHidden ? 'hidden ' : ''}text-sm text-base-content/70 cursor-pointer hover:bg-base-200 rounded-lg px-2 py-1 transition-colors break-words whitespace-pre-wrap min-h-[2rem] flex items-center ${task.notes ? '' : 'italic text-base-content/50'}`.trim();
+    if (notesInput) {
       notesInput.value = task.notes;
     }
     
@@ -730,6 +731,9 @@ class PetaTasClient {
       timerButton.innerHTML = isTimerRunning ? PAUSE_SVG : PLAY_SVG;
       timerButton.setAttribute('title', isTimerRunning ? 'Pause timer' : 'Start timer');
       timerButton.setAttribute('aria-label', isTimerRunning ? 'Pause timer' : 'Start timer');
+      const disable = task.status === 'done'
+      timerButton.disabled = disable
+      timerButton.setAttribute('aria-disabled', disable ? 'true' : 'false')
     }
     
     // Update data attributes
@@ -797,21 +801,34 @@ class PetaTasClient {
       console.warn(`Task name element not found for task ${taskId}`);
     }
 
-    // Update status badge semantics
+    // Update status badge semantics (icon-only)
     const badge = taskRow.querySelector('.status-badge') as HTMLElement | null
     if (badge) {
-      const { text, cls, aria } = this.getStatusBadge(status)
-      // Preserve fixed width + truncation structure to avoid layout shift
-      badge.className = `status-badge badge badge-md align-middle w-[5rem] md:w-auto overflow-hidden ${cls}`
-      const inner = badge.querySelector('span') as HTMLElement | null
-      if (inner) {
-        inner.className = 'block truncate'
-        inner.textContent = text
+      const { text, cls, aria, icon } = this.getStatusBadge(status)
+      // Icon-only badge with minimal width
+      badge.className = `status-badge badge badge-md align-middle ${cls}`
+
+      // Ensure an icon exists and matches the status
+      const iconEl = badge.querySelector('svg.status-icon') as SVGElement | null
+      if (!iconEl) {
+        badge.innerHTML = icon
+      } else if (iconEl.getAttribute('data-icon') !== status) {
+        iconEl.outerHTML = icon
       } else {
-        badge.innerHTML = `<span class="block truncate">${text}</span>`
+        // keep as-is
       }
+
+      // Tooltip and aria semantics
       badge.setAttribute('aria-label', aria)
       badge.setAttribute('title', text)
+    }
+
+    // Disable/enable timer button based on status
+    const timerBtn = taskRow.querySelector(`button[data-action="timer"][data-task-id="${taskId}"]`) as HTMLButtonElement | null
+    if (timerBtn) {
+      const shouldDisable = status === 'done'
+      timerBtn.disabled = shouldDisable
+      timerBtn.setAttribute('aria-disabled', shouldDisable ? 'true' : 'false')
     }
   }
 
@@ -853,8 +870,8 @@ class PetaTasClient {
             ${task.status === 'done' ? 'checked' : ''}
             data-task-id="${escapeHtml(task.id)}"
             />
-            <span class="status-badge badge badge-md align-middle w-[5rem] md:w-auto overflow-hidden ${this.getStatusBadge(task.status).cls}" aria-label="${this.getStatusBadge(task.status).aria}" title="${this.getStatusBadge(task.status).text}">
-              <span class="block truncate">${this.getStatusBadge(task.status).text}</span>
+            <span class="status-badge badge badge-md align-middle ${this.getStatusBadge(task.status).cls}" aria-label="${this.getStatusBadge(task.status).aria}" title="${this.getStatusBadge(task.status).text}">
+              ${this.getStatusBadge(task.status).icon}
             </span>
             <div class="timer-controls flex items-center gap-2 ml-2 shrink-0">
               <div class="timer-display ${isTimerRunning ? 'running' : ''} self-end md:self-auto">${elapsedTime}</div>
@@ -869,7 +886,7 @@ class PetaTasClient {
                 data-task-id="${escapeHtml(task.id)}"
                 data-action="set-minutes"
               />
-              <button class="btn btn-ghost btn-xs" data-task-id="${escapeHtml(task.id)}" data-action="timer" title="${isTimerRunning ? 'Pause timer' : 'Start timer'}" aria-label="${isTimerRunning ? 'Pause timer' : 'Start timer'}">
+              <button class="btn btn-ghost btn-xs" data-task-id="${escapeHtml(task.id)}" data-action="timer" title="${isTimerRunning ? 'Pause timer' : 'Start timer'}" aria-label="${isTimerRunning ? 'Pause timer' : 'Start timer'}" ${task.status === 'done' ? 'disabled aria-disabled=\"true\"' : ''}>
                 ${isTimerRunning ? PAUSE_SVG : PLAY_SVG}
               </button>
             </div>
@@ -885,14 +902,6 @@ class PetaTasClient {
               data-task-id="${escapeHtml(task.id)}"
               id="notes-input-${escapeHtml(task.id)}"
             >${escapeHtml(task.notes)}</textarea>
-            <div 
-              class="notes-display hidden text-sm text-base-content/70 cursor-pointer hover:bg-base-200 rounded-lg px-2 py-1 transition-colors break-words whitespace-pre-wrap min-h-[2rem] flex items-center ${task.notes ? '' : 'italic text-base-content/50'}" 
-              data-task-id="${escapeHtml(task.id)}"
-              id="notes-display-${escapeHtml(task.id)}"
-              title="Click to edit notes"
-            >
-              ${task.notes ? escapeHtml(task.notes) : 'Add notes...'}
-            </div>
           </div>
         </div>
         </div>
@@ -907,21 +916,34 @@ class PetaTasClient {
     const taskList = document.getElementById('task-list');
     if (!taskList) return;
 
-    // Event delegation for task operations
+    // Event delegation for task operations (robust to nested targets like SVG/path/Text)
     taskList.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-      const taskId = target.dataset.taskId;
-      
-      if (!taskId) return;
+      const node = e.target as Node
+      const baseEl = (node.nodeType === Node.ELEMENT_NODE ? (node as Element) : (node.parentElement)) as Element | null
+      if (!baseEl) return
 
-      if (target.dataset.action === 'timer') {
-        this.toggleTimer(taskId);
-      } else if (target.dataset.action === 'delete') {
-        this.deleteTask(taskId);
-      } else if (target.classList.contains('notes-display')) {
-        this.enterNotesEditMode(taskId);
+      // 1) Actions by data-action on button elements
+      const actionEl = baseEl.closest('[data-action]') as HTMLElement | null
+      if (actionEl) {
+        const action = actionEl.getAttribute('data-action')
+        const taskId = actionEl.getAttribute('data-task-id')
+        if (!taskId) return
+        if (action === 'timer') {
+          // Block interaction when button is disabled or task is done
+          const btn = actionEl as HTMLButtonElement
+          if (btn.disabled) return
+          const row = btn.closest('[data-testid^="task-\"]') as HTMLElement | null
+          if (row?.getAttribute('data-status') === 'done') return
+          this.toggleTimer(taskId)
+          return
+        }
+        if (action === 'delete') {
+          this.deleteTask(taskId)
+          return
+        }
       }
-    });
+
+    })
 
     // Handle minute input changes
     taskList.addEventListener('input', (e) => {
@@ -1099,6 +1121,12 @@ class PetaTasClient {
     const task = this.currentTasks.find(t => t.id === taskId);
     if (!task) return;
 
+    // Do not allow starting the timer for done tasks
+    if (task.status === 'done' && !this.activeTimers.has(taskId)) {
+      this.updateTimerButtonState(taskId, false);
+      return;
+    }
+
     if (this.activeTimers.has(taskId)) {
       // Stop timer
       const timer = this.activeTimers.get(taskId)!;
@@ -1202,50 +1230,7 @@ class PetaTasClient {
     }
   }
 
-  enterNotesEditMode(taskId: string): void {
-    const notesInput = document.getElementById(`notes-input-${taskId}`) as HTMLTextAreaElement;
-    if (!notesInput) {
-      console.warn(`Notes input not found for task ${taskId}`);
-      return;
-    }
-    // Focus and select the input (no show/hide toggling)
-    notesInput.focus();
-    notesInput.select();
-  }
-
-  exitNotesEditMode(taskId: string, save: boolean): void {
-    const notesDisplay = document.getElementById(`notes-display-${taskId}`);
-    const notesInput = document.getElementById(`notes-input-${taskId}`) as HTMLTextAreaElement;
-    const task = this.currentTasks.find(t => t.id === taskId);
-    
-    if (!notesInput || !notesDisplay || !task) {
-      console.warn(`Notes elements or task not found for task ${taskId}`);
-      return;
-    }
-
-    if (save) {
-      const newNotes = notesInput.value.trim();
-      const oldNotes = task.notes;
-      if (newNotes !== oldNotes) {
-        task.notes = newNotes;
-        task.updatedAt = new Date();
-        // Update hidden display preview text/state, but keep textarea visible
-        notesDisplay.textContent = newNotes || 'Add notes...';
-        notesDisplay.className = `notes-display hidden text-sm text-base-content/70 cursor-pointer hover:bg-base-200 rounded-lg px-2 py-1 transition-colors break-words whitespace-pre-wrap min-h-[2rem] flex items-center ${newNotes ? '' : 'italic text-base-content/50'}`;
-        this.saveTasks().catch(error => {
-          console.error('Failed to save notes changes:', error);
-          task.notes = oldNotes;
-          notesDisplay.textContent = oldNotes || 'Add notes...';
-          notesDisplay.className = `notes-display hidden text-sm text-base-content/70 cursor-pointer hover:bg-base-200 rounded-lg px-2 py-1 transition-colors break-words whitespace-pre-wrap min-h-[2rem] flex items-center ${oldNotes ? '' : 'italic text-base-content/50'}`;
-          notesInput.value = oldNotes;
-          this.showToast('Failed to save notes. Please try again.', 'error');
-        });
-      }
-    } else {
-      // Cancel: revert to original value but do not hide input
-      notesInput.value = task.notes;
-    }
-  }
+  // Notes editing is simplified: textarea is always visible.
 
   setupErrorNotificationListener(): void {
     document.addEventListener('error-notification', (event: Event) => {

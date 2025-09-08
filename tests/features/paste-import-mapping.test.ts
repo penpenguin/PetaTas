@@ -94,9 +94,11 @@ describe('Paste import mapping', () => {
     const html = first.innerHTML;
     expect(html).toContain('見積(分)');
     expect(html).toContain('25');
-    // Notes from paste are ignored; placeholder is shown
-    const notesDisplay = first.querySelector('.notes-display') as HTMLElement;
-    expect(notesDisplay.textContent?.includes('Add notes...')).toBe(true);
+    // Notes from paste are ignored; textarea is empty (placeholder guides input)
+    const notesInput = first.querySelector('textarea.notes-input') as HTMLTextAreaElement;
+    expect(notesInput).toBeTruthy();
+    expect(notesInput.value).toBe('');
+    expect(notesInput.getAttribute('placeholder')).toBe('Add notes...');
 
     const second = rows[1] as HTMLElement;
     expect(second?.getAttribute('data-status')).toBe('todo');

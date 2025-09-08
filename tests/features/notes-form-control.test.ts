@@ -59,13 +59,8 @@ describe('Notes area aligns with daisyUI form-control', () => {
     expect(textarea.className).toMatch(/\btextarea\b/)
     expect(textarea.className).toMatch(/\btextarea-bordered\b/)
 
+    // No separate display block is required anymore
     const display = document.querySelector('.notes-display') as HTMLElement
-    expect(display).toBeTruthy()
-    // Should not use raw CSS var rounding
-    expect(display.className).not.toMatch(/rounded\[/)
-    // Should use daisyUI-friendly utilities
-    expect(display.className).toMatch(/\brounded-\w+\b/)
-    expect(display.className).toMatch(/hover:bg-base-200/)
+    expect(display).toBeNull()
   })
 })
-
