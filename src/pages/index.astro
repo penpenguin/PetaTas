@@ -123,7 +123,7 @@ const { title = 'PetaTas' } = Astro.props;
 
     <!-- Client-side JavaScript -->
     {import.meta.env.DEV
-      ? (<script src="/src/panel-client.ts"></script>)
-      : (<script src="/panel-client.js"></script>)}
+      ? (<script type="module" src="/src/panel-client.ts"></script>)
+      : (<div set:html={'<script src="/panel-client.js"></script>'}></div>)}
   </body>
 </html>
