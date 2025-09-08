@@ -886,7 +886,7 @@ class PetaTasClient {
                 data-task-id="${escapeHtml(task.id)}"
                 data-action="set-minutes"
               />
-              <button class="btn btn-ghost btn-xs" data-task-id="${escapeHtml(task.id)}" data-action="timer" title="${isTimerRunning ? 'Pause timer' : 'Start timer'}" aria-label="${isTimerRunning ? 'Pause timer' : 'Start timer'}" ${task.status === 'done' ? 'disabled aria-disabled=\"true\"' : ''}>
+              <button class="btn btn-ghost btn-xs" data-task-id="${escapeHtml(task.id)}" data-action="timer" title="${isTimerRunning ? 'Pause timer' : 'Start timer'}" aria-label="${isTimerRunning ? 'Pause timer' : 'Start timer'}" ${task.status === 'done' ? 'disabled aria-disabled="true"' : ''}>
                 ${isTimerRunning ? PAUSE_SVG : PLAY_SVG}
               </button>
             </div>
@@ -932,7 +932,7 @@ class PetaTasClient {
           // Block interaction when button is disabled or task is done
           const btn = actionEl as HTMLButtonElement
           if (btn.disabled) return
-          const row = btn.closest('[data-testid^="task-\"]') as HTMLElement | null
+          const row = btn.closest('[data-testid^="task-"]') as HTMLElement | null
           if (row?.getAttribute('data-status') === 'done') return
           this.toggleTimer(taskId)
           return
@@ -991,6 +991,32 @@ class PetaTasClient {
         }
       }
     });
+  }
+
+  // Notes: textarea is always visible. This helper persists or reverts content.
+  private exitNotesEditMode(taskId: string, save: boolean): void {
+    const task = this.currentTasks.find(t => t.id === taskId);
+    const textarea = document.getElementById(`notes-input-${taskId}`) as HTMLTextAreaElement | null;
+    if (!task || !textarea) return;
+
+    if (save) {
+      const prev = task.notes;
+      const next = textarea.value;
+      if (next !== prev) {
+        task.notes = next;
+        task.updatedAt = new Date();
+        this.saveTasks().catch((error) => {
+          console.error('Failed to save notes:', error);
+          // rollback on failure
+          task.notes = prev;
+          textarea.value = prev;
+          this.showToast('Failed to save notes. Please try again.', 'error');
+        });
+      }
+    } else {
+      // Revert textarea to stored value
+      textarea.value = task.notes;
+    }
   }
 
   async toggleTaskStatus(taskId: string, checked: boolean): Promise<void> {
