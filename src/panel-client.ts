@@ -702,11 +702,12 @@ class PetaTasClient {
     }
     
     // Update notes display and input
-    const notesDisplay = existingRow.querySelector('.notes-display');
-    const notesInput = existingRow.querySelector('.notes-input') as HTMLTextAreaElement;
+    const notesDisplay = existingRow.querySelector('.notes-display') as HTMLElement | null;
+    const notesInput = existingRow.querySelector('.notes-input') as HTMLTextAreaElement | null;
     if (notesDisplay && notesInput) {
+      const wasHidden = notesDisplay.classList.contains('hidden');
       notesDisplay.textContent = task.notes || 'Add notes...';
-      notesDisplay.className = `notes-display text-sm text-base-content/70 cursor-pointer hover:bg-base-200 rounded-lg px-2 py-1 transition-colors break-words whitespace-pre-wrap min-h-[2rem] flex items-center ${task.notes ? '' : 'italic text-base-content/50'}`;
+      notesDisplay.className = `notes-display ${wasHidden ? 'hidden ' : ''}text-sm text-base-content/70 cursor-pointer hover:bg-base-200 rounded-lg px-2 py-1 transition-colors break-words whitespace-pre-wrap min-h-[2rem] flex items-center ${task.notes ? '' : 'italic text-base-content/50'}`.trim();
       notesInput.value = task.notes;
     }
     
@@ -800,9 +801,17 @@ class PetaTasClient {
     const badge = taskRow.querySelector('.status-badge') as HTMLElement | null
     if (badge) {
       const { text, cls, aria } = this.getStatusBadge(status)
-      badge.className = `status-badge badge badge-md align-middle ${cls}`
-      badge.textContent = text
+      // Preserve fixed width + truncation structure to avoid layout shift
+      badge.className = `status-badge badge badge-md align-middle w-[5rem] md:w-auto overflow-hidden ${cls}`
+      const inner = badge.querySelector('span') as HTMLElement | null
+      if (inner) {
+        inner.className = 'block truncate'
+        inner.textContent = text
+      } else {
+        badge.innerHTML = `<span class="block truncate">${text}</span>`
+      }
       badge.setAttribute('aria-label', aria)
+      badge.setAttribute('title', text)
     }
   }
 
@@ -837,19 +846,21 @@ class PetaTasClient {
     return `
       <div class="${this.baseRowClasses}${this.getRowStatusClasses(task.status)}" data-testid="task-${escapeHtml(task.id)}" data-status="${escapeHtml(task.status)}">
         <div class="card-body p-3 w-full">
-          <div class="flex items-center gap-3 w-full">
+          <div class="flex items-center gap-3 w-full whitespace-nowrap">
             <input 
               type="checkbox" 
               class="checkbox shrink-0" 
             ${task.status === 'done' ? 'checked' : ''}
             data-task-id="${escapeHtml(task.id)}"
             />
-            <span class="status-badge badge badge-md align-middle ${this.getStatusBadge(task.status).cls}" aria-label="${this.getStatusBadge(task.status).aria}">${this.getStatusBadge(task.status).text}</span>
-            <div class="timer-controls flex items-center gap-2 ml-4">
+            <span class="status-badge badge badge-md align-middle w-[5rem] md:w-auto overflow-hidden ${this.getStatusBadge(task.status).cls}" aria-label="${this.getStatusBadge(task.status).aria}" title="${this.getStatusBadge(task.status).text}">
+              <span class="block truncate">${this.getStatusBadge(task.status).text}</span>
+            </span>
+            <div class="timer-controls flex items-center gap-2 ml-2 shrink-0">
               <div class="timer-display ${isTimerRunning ? 'running' : ''} self-end md:self-auto">${elapsedTime}</div>
               <input 
                 type="number" 
-                class="timer-minutes-input input input-bordered input-xs w-16 text-center"
+                class="timer-minutes-input input input-bordered input-xs w-12 text-center"
                 value="${Math.round(task.elapsedMs / 60000)}"
                 min="0"
                 step="1"

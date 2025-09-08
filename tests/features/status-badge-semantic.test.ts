@@ -78,8 +78,8 @@ describe('Status badge uses daisyUI semantics', () => {
       const timerControls = parent.querySelector('.timer-controls') as HTMLElement | null
       expect(timerControls).toBeTruthy()
       expect(badge.nextElementSibling).toBe(timerControls)
-      // Timer section has a bit more left margin for visual separation
-      expect((timerControls as HTMLElement).className).toMatch(/\bml-4\b/)
+      // Timer section has a bit of left margin for visual separation (reduced)
+      expect((timerControls as HTMLElement).className).toMatch(/\bml-2\b/)
 
       // Card left border colors should reflect status (no background overlays)
       expect(row.className).toMatch(/\bborder-l-4\b/)
