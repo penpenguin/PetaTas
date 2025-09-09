@@ -729,7 +729,8 @@ class PetaTasClient {
     const timerButton = existingRow.querySelector('button[data-action="timer"]') as HTMLButtonElement | null;
     if (timerButton) {
       timerButton.innerHTML = isTimerRunning ? PAUSE_SVG : PLAY_SVG;
-      timerButton.setAttribute('title', isTimerRunning ? 'Pause timer' : 'Start timer');
+      timerButton.classList.add('tooltip');
+      timerButton.setAttribute('data-tip', isTimerRunning ? 'Pause timer' : 'Start timer');
       timerButton.setAttribute('aria-label', isTimerRunning ? 'Pause timer' : 'Start timer');
       const disable = task.status === 'done'
       timerButton.disabled = disable
@@ -818,9 +819,10 @@ class PetaTasClient {
         // keep as-is
       }
 
-      // Tooltip and aria semantics
+      // Tooltip and aria semantics (daisyUI)
       badge.setAttribute('aria-label', aria)
-      badge.setAttribute('title', text)
+      badge.classList.add('tooltip')
+      badge.setAttribute('data-tip', text)
     }
 
     // Disable/enable timer button based on status
@@ -839,9 +841,10 @@ class PetaTasClient {
       return;
     }
 
-    // Update button text and title
+    // Update button text and tooltip
     timerButton.innerHTML = isRunning ? PAUSE_SVG : PLAY_SVG;
-    timerButton.setAttribute('title', isRunning ? 'Pause timer' : 'Start timer');
+    timerButton.classList.add('tooltip');
+    timerButton.setAttribute('data-tip', isRunning ? 'Pause timer' : 'Start timer');
     timerButton.setAttribute('aria-label', isRunning ? 'Pause timer' : 'Start timer');
   }
 
@@ -860,7 +863,7 @@ class PetaTasClient {
             const title = `${escapeHtmlAttribute(header)}: ${escapeHtmlAttribute(value)}`
             // Badge: limit width to container and show tooltip; inner span handles ellipsis
             return `
-            <span class="badge badge-md mr-1 mb-1 align-middle max-w-full" title="${title}">
+            <span class="badge badge-md mr-1 mb-1 align-middle max-w-full tooltip" data-tip="${title}">
               <span class="inline-block truncate max-w-full">${label}</span>
             </span>
           `
@@ -877,23 +880,23 @@ class PetaTasClient {
             ${task.status === 'done' ? 'checked' : ''}
             data-task-id="${escapeHtml(task.id)}"
             />
-            <span class="status-badge badge badge-md align-middle ${this.getStatusBadge(task.status).cls}" aria-label="${this.getStatusBadge(task.status).aria}" title="${this.getStatusBadge(task.status).text}">
+            <span class="status-badge badge badge-md align-middle ${this.getStatusBadge(task.status).cls} tooltip" aria-label="${this.getStatusBadge(task.status).aria}" data-tip="${this.getStatusBadge(task.status).text}">
               ${this.getStatusBadge(task.status).icon}
             </span>
             <div class="timer-controls flex items-center gap-2 ml-2 shrink-0">
               <div class="timer-display ${isTimerRunning ? 'running' : ''} self-end md:self-auto">${elapsedTime}</div>
               <input 
                 type="number" 
-                class="timer-minutes-input input input-bordered input-xs w-12 text-center"
+                class="timer-minutes-input input input-bordered input-xs w-12 text-center tooltip"
                 value="${Math.round(task.elapsedMs / 60000)}"
                 min="0"
                 step="1"
                 placeholder="min"
-                title="Enter time in minutes"
+                data-tip="Enter time in minutes"
                 data-task-id="${escapeHtml(task.id)}"
                 data-action="set-minutes"
               />
-              <button class="btn btn-ghost btn-xs" data-task-id="${escapeHtml(task.id)}" data-action="timer" title="${isTimerRunning ? 'Pause timer' : 'Start timer'}" aria-label="${isTimerRunning ? 'Pause timer' : 'Start timer'}" ${task.status === 'done' ? 'disabled aria-disabled="true"' : ''}>
+              <button class="btn btn-ghost btn-xs tooltip" data-task-id="${escapeHtml(task.id)}" data-action="timer" data-tip="${isTimerRunning ? 'Pause timer' : 'Start timer'}" aria-label="${isTimerRunning ? 'Pause timer' : 'Start timer'}" ${task.status === 'done' ? 'disabled aria-disabled="true"' : ''}>
                 ${isTimerRunning ? PAUSE_SVG : PLAY_SVG}
               </button>
             </div>
@@ -912,7 +915,7 @@ class PetaTasClient {
           </div>
         </div>
         </div>
-        <button class="absolute top-2 right-2 btn btn-ghost btn-xs text-base-content/60 hover:text-error hover:bg-error/10" data-task-id="${escapeHtml(task.id)}" data-action="delete" title="Delete task">
+        <button class="absolute top-2 right-2 btn btn-ghost btn-xs text-base-content/60 hover:text-error hover:bg-error/10 tooltip" data-task-id="${escapeHtml(task.id)}" data-action="delete" data-tip="Delete task">
           ×
         </button>
       </div>
