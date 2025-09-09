@@ -874,7 +874,7 @@ class PetaTasClient {
     
     return `
       <div class="${this.baseRowClasses}${this.getRowStatusClasses(task.status)}" data-testid="task-${escapeHtml(task.id)}" data-status="${escapeHtml(task.status)}">
-        <div class="card-body p-3 w-full">
+        <div class="card-body px-2 py-3 w-full">
           <div class="flex items-center gap-3 w-full whitespace-nowrap">
             <input 
               type="checkbox" 
