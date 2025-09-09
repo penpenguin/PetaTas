@@ -340,6 +340,8 @@ class PetaTasClient {
 
     // Clear existing fields
     container.innerHTML = '';
+    // Ensure comfortable vertical spacing between form controls
+    container.classList.add('space-y-4');
 
     // If no tasks exist, show a basic name field
     if (this.currentTasks.length === 0) {
