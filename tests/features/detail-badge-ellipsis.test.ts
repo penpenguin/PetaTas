@@ -60,7 +60,7 @@ describe('Detail badges truncate text and show tooltip', () => {
     dom.window.close()
   })
 
-  it('renders detail badges with ellipsis and a tooltip title', async () => {
+  it('renders detail badges with ellipsis and a daisyUI tooltip', async () => {
     vi.resetModules()
     await import('../../src/panel-client.ts')
 
@@ -73,9 +73,10 @@ describe('Detail badges truncate text and show tooltip', () => {
     expect(badges.length).toBeGreaterThan(0)
 
     for (const badge of badges) {
-      // Should have a title attribute for native tooltip
-      const title = badge.getAttribute('title')
-      expect(title && title.length).toBeGreaterThan(0)
+      // Should have daisyUI tooltip via data-tip and class
+      expect(badge.classList.contains('tooltip')).toBe(true)
+      const tip = badge.getAttribute('data-tip')
+      expect(tip && tip.length).toBeGreaterThan(0)
       // Should use truncation utility via inner span
       const inner = badge.querySelector('span') as HTMLElement | null
       expect(inner).toBeTruthy()
@@ -83,4 +84,3 @@ describe('Detail badges truncate text and show tooltip', () => {
     }
   })
 })
-
