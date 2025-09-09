@@ -26,4 +26,16 @@ describe('main.css cleanup for daisyUI compatibility', () => {
     expect(css).not.toMatch(/@media\s*\(prefers-color-scheme:\s*dark\)/)
     expect(css).not.toMatch(/color-scheme:\s*dark\s*;/)
   })
+
+  it('applies global horizontal overflow suppression on body', () => {
+    // Ensure we clip any accidental fixed/absolute elements outside panel root
+    expect(css).toMatch(/body\s*\{[\s\S]*?overflow-x:\s*hidden;[\s\S]*?\}/)
+  })
+
+  it('sets html/body margin and padding to zero', () => {
+    // Accept either a combined selector or separate rules; require both properties
+    const combined = /(html\s*,\s*body)\s*\{[\s\S]*?margin:\s*0;[\s\S]*?padding:\s*0;[\s\S]*?\}/
+    const htmlRule = /html\s*\{[\s\S]*?margin:\s*0;[\s\S]*?padding:\s*0;[\s\S]*?\}/
+    expect(combined.test(css) || htmlRule.test(css)).toBe(true)
+  })
 })
