@@ -855,9 +855,16 @@ class PetaTasClient {
     const additionalColumnsHtml = task.additionalColumns 
       ? Object.entries(task.additionalColumns)
           .filter(([header, value]) => !isSystemHeader(header) && value.trim() !== '')
-          .map(([header, value]) => `
-            <span class="badge badge-md mr-1 mb-1">${escapeHtml(header)}: ${escapeHtml(value)}</span>
-          `).join('')
+          .map(([header, value]) => {
+            const label = `${escapeHtml(header)}: ${escapeHtml(value)}`
+            const title = `${escapeHtmlAttribute(header)}: ${escapeHtmlAttribute(value)}`
+            // Badge: limit width to container and show tooltip; inner span handles ellipsis
+            return `
+            <span class="badge badge-md mr-1 mb-1 align-middle max-w-full" title="${title}">
+              <span class="inline-block truncate max-w-full">${label}</span>
+            </span>
+          `
+          }).join('')
       : '';
     
     return `
