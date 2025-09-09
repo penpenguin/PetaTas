@@ -24,7 +24,7 @@ body {
 }
 
 .drawer-content {
-  @apply flex flex-col h-full;
+  @apply flex flex-col h-full p-0;
 }
 
 /* Prefer daisyUI defaults; avoid component overrides */
