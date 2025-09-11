@@ -12,6 +12,10 @@ import { applyRowVisualState, updateRowFromTask, setTimerButtonState } from './u
 import { initSystemThemeSync } from './utils/theme.js'
 import { minutesToMs, formatHms } from './utils/time-utils.js'
 import generateMarkdownTable from './utils/markdown-exporter.js'
+// Consolidate form helpers
+import { getFieldLabel, getFieldPlaceholder } from '@/utils/form-field-utils'
+import { captureDynamicFieldState, restoreDynamicFieldState } from '@/utils/form-state-utils'
+import showToast from '@/utils/toast'
 
 // Inline SVGs for timer button
 const PLAY_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>'
@@ -47,6 +51,14 @@ class PetaTasClient {
       if (typeof chrome === 'undefined' || !chrome.storage?.sync) {
         throw new Error('Chrome Extension environment not detected')
       }
+      // Subscribe to central error notifications → UI toast
+      document.addEventListener('error-notification', (ev) => {
+        const detail = (ev as CustomEvent).detail as { message?: string; severity?: 'low'|'medium'|'high'|'critical' }
+        const msg = detail?.message || 'An error occurred.'
+        const sev = detail?.severity || 'medium'
+        const type = sev === 'high' || sev === 'critical' ? 'error' : sev === 'medium' ? 'warning' : 'success'
+        showToast(msg, type)
+      })
       await this.loadTasks()
       this.renderTasks()
       this.setupEventListeners()
@@ -68,6 +80,7 @@ class PetaTasClient {
 
     const addTaskForm = q('add-task-form') as HTMLFormElement | null
     addTaskForm?.addEventListener('submit', (e) => { void this.handleAddTaskSubmit(e) })
+
   }
 
   private setupTaskEventListeners(): void {
@@ -230,8 +243,8 @@ class PetaTasClient {
   private createDynamicField(container: HTMLElement, fieldName: string): void {
     const formControl = document.createElement('div')
     formControl.className = 'form-control'
-    const label = this.getFieldLabel(fieldName)
-    const placeholder = this.getFieldPlaceholder(fieldName)
+    const label = getFieldLabel(fieldName)
+    const placeholder = getFieldPlaceholder(fieldName)
     formControl.innerHTML = `
       <label class="label">
         <span class="label-text">${label}</span>
@@ -239,30 +252,6 @@ class PetaTasClient {
       <input type="text" class="input input-bordered w-full dynamic-field-input" data-field-name="${fieldName}" placeholder="${placeholder}"/>
     `
     container.appendChild(formControl)
-  }
-
-  private getFieldLabel(fieldName: string): string {
-    switch (fieldName.toLowerCase()) {
-      case 'name': return 'Task Name'
-      case 'notes': return 'Notes'
-      case 'priority': return 'Priority'
-      case 'category': return 'Category'
-      case 'assignee': return 'Assignee'
-      case 'status': return 'Status'
-      default: return fieldName.charAt(0).toUpperCase() + fieldName.slice(1)
-    }
-  }
-
-  private getFieldPlaceholder(fieldName: string): string {
-    switch (fieldName.toLowerCase()) {
-      case 'name': return 'Enter task name...'
-      case 'notes': return 'Add notes (optional)...'
-      case 'priority': return 'e.g., High, Medium, Low'
-      case 'category': return 'e.g., Development, Design, Testing'
-      case 'assignee': return 'Enter assignee name...'
-      case 'status': return 'e.g., TODO, In Progress, Done'
-      default: return `Enter ${fieldName.toLowerCase()}...`
-    }
   }
 
   private async handleAddTaskSubmit(event: Event): Promise<void> {
@@ -297,7 +286,7 @@ class PetaTasClient {
     const prev = [...this.currentTasks]
     const modal = document.getElementById('add-task-modal') as HTMLInputElement | null
     const wasOpen = !!modal?.checked
-    const formState = this.captureFormState()
+    const formState = captureDynamicFieldState()
 
     // Optimistic UI
     this.currentTasks.push(task)
@@ -312,26 +301,10 @@ class PetaTasClient {
       this.renderTasks()
       if (wasOpen && modal) {
         modal.checked = true
-        this.restoreFormState(formState)
+        restoreDynamicFieldState(formState)
       }
       return false
     }
-  }
-
-  private captureFormState(): Record<string, string> {
-    const map: Record<string, string> = {}
-    document.querySelectorAll('.dynamic-field-input').forEach((el) => {
-      const name = (el as HTMLInputElement).dataset.fieldName
-      if (name) map[name] = (el as HTMLInputElement).value
-    })
-    return map
-  }
-
-  private restoreFormState(state: Record<string, string>): void {
-    document.querySelectorAll('.dynamic-field-input').forEach((el) => {
-      const name = (el as HTMLInputElement).dataset.fieldName
-      if (name && state[name] !== undefined) (el as HTMLInputElement).value = state[name]
-    })
   }
 
   private async toggleTaskStatus(taskId: string, checked: boolean): Promise<void> {
@@ -416,6 +389,8 @@ class PetaTasClient {
     }
   }
 
+  
+
   private async handlePasteClick(): Promise<void> {
     try {
       if (!navigator.clipboard?.readText) throw new Error('Clipboard API not available')
@@ -457,8 +432,31 @@ class PetaTasClient {
       }))
       const md = generateMarkdownTable(headers, rows)
       await navigator.clipboard.writeText(md)
+      showToast('Copied Markdown to clipboard.', 'success')
     } catch (e) {
       handleClipboardError(e, { module: 'PetaTasClient', operation: 'handleExportClick' }, 'write')
+      // Always provide user feedback for export failure; avoid double toast for NotAllowedError (already notified centrally)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const name = (e as any)?.name as string | undefined
+      if (name !== 'NotAllowedError') {
+        showToast('Failed to copy Markdown. Please try again.', 'error')
+      }
+    } finally {
+      this.closeActionsMenu()
+    }
+  }
+
+  private closeActionsMenu(): void {
+    const exportBtn = document.getElementById('export-button') as HTMLElement | null
+    const dropdown = exportBtn?.closest('.dropdown') as HTMLElement | null
+    if (dropdown) {
+      dropdown.classList.remove('dropdown-open')
+      const active = document.activeElement as HTMLElement | null
+      if (active && dropdown.contains(active)) active.blur()
+    } else {
+      // Fallback: blur current focus to collapse focus-within based dropdowns
+      const active = document.activeElement as HTMLElement | null
+      active?.blur()
     }
   }
 }
