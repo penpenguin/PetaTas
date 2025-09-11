@@ -41,3 +41,20 @@ export function parseTimerToMs(input: string): number {
   return 0;
 }
 
+// Format milliseconds into HH:MM:SS (caps hours at 2 digits visually)
+export function formatHms(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  return `${hours.toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
+}
+
+// Convert minutes to milliseconds (no negatives)
+export function minutesToMs(minutes: number): number {
+  return Math.max(0, minutes) * 60 * 1000;
+}
+
+// Convert milliseconds to rounded minutes
+export function msToMinutes(ms: number): number {
+  return Math.round(ms / 60000);
+}

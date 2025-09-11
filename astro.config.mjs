@@ -1,4 +1,5 @@
 import { defineConfig } from 'astro/config';
+import { fileURLToPath } from 'node:url';
 import tailwind from '@astrojs/tailwind';
 
 // https://astro.build/config
@@ -10,15 +11,22 @@ export default defineConfig({
     inlineStylesheets: 'auto'
   },
   vite: {
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+      }
+    },
     plugins: [
       {
         name: 'client-scripts-build',
         writeBundle() {
           // Build client scripts separately
+          const alias = { '@': fileURLToPath(new URL('./src', import.meta.url)) };
           return import('vite').then(({ build }) => {
             return Promise.all([
               // Build service worker
               build({
+                resolve: { alias },
                 build: {
                   lib: {
                     entry: './src/service-worker.ts',
@@ -37,6 +45,7 @@ export default defineConfig({
               }),
               // Build panel client
               build({
+                resolve: { alias },
                 build: {
                   lib: {
                     entry: './src/panel-client.ts',
