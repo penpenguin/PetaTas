@@ -24,11 +24,19 @@ export class StorageManager {
   // private static readonly MAX_ITEM_BYTES = 8 * 1024; // 8KB per item limit - reserved for future use
   
   // Write operation throttling to prevent quota exceeded errors
-  private static readonly WRITE_THROTTLE_MS = 2000; // 2 seconds between writes
-  private static readonly MAX_WRITES_PER_MINUTE = 120; // Chrome limit
+  private static readonly DEFAULT_WRITE_THROTTLE_MS = 2000; // 2 seconds between writes
+  private static readonly DEFAULT_MAX_WRITES_PER_MINUTE = 120; // Chrome limit
+
+  private readonly writeThrottleMs: number;
+  private readonly maxWritesPerMinute: number;
   private writeQueue: Map<string, { data: unknown; resolve: (value: void) => void; reject: (error: Error) => void; timestamp: number }> = new Map();
   private writeHistory: number[] = [];
   private throttleTimer: NodeJS.Timeout | null = null;
+
+  constructor(options?: { writeThrottleMs?: number; maxWritesPerMinute?: number }) {
+    this.writeThrottleMs = options?.writeThrottleMs ?? StorageManager.DEFAULT_WRITE_THROTTLE_MS;
+    this.maxWritesPerMinute = options?.maxWritesPerMinute ?? StorageManager.DEFAULT_MAX_WRITES_PER_MINUTE;
+  }
 
   // Save tasks to chrome.storage.sync with throttling
   async saveTasks(tasks: Task[]): Promise<void> {
@@ -209,7 +217,7 @@ export class StorageManager {
       if (this.writeQueue.size > 0) {
         this.processWriteQueue();
       }
-    }, StorageManager.WRITE_THROTTLE_MS);
+    }, this.writeThrottleMs);
   }
 
   // Execute a batch of writes
@@ -222,7 +230,7 @@ export class StorageManager {
     );
 
     // Check if we're approaching rate limit
-    if (this.writeHistory.length >= StorageManager.MAX_WRITES_PER_MINUTE * 0.8) {
+    if (this.writeHistory.length >= this.maxWritesPerMinute * 0.8) {
       console.warn('Approaching write rate limit, delaying writes');
       return; // Skip this batch
     }
@@ -262,7 +270,7 @@ export class StorageManager {
         error.message.includes('MAX_WRITE_OPERATIONS_PER_MINUTE')
       )) {
         console.warn('Storage quota exceeded, increasing throttle delay');
-        setTimeout(() => this.processWriteQueue(), StorageManager.WRITE_THROTTLE_MS * 3);
+        setTimeout(() => this.processWriteQueue(), this.writeThrottleMs * 3);
         return;
       }
     }
