@@ -102,13 +102,12 @@ export function createTask(
     }
     
     switch (normalizedHeader) {
+      // Title/name aliases (English + Japanese)
       case 'name':
       case 'task':
       case 'title':
-      // English variants
-      case 'taskname':           // e.g., "TaskName"
-      case 'task name':          // e.g., "Task Name"
-      // Japanese variants
+      case 'taskname':
+      case 'task name':
       case '名前':
       case '題名':
       case '件名':
