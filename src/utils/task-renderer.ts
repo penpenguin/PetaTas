@@ -71,7 +71,7 @@ export function renderTaskRowHtml(task: Task, isTimerRunning: boolean, baseRowCl
           </div>
         </div>
         </div>
-        <button class="absolute top-2 right-2 btn btn-ghost btn-xs text-base-content/60 hover:text-error hover:bg-error/10 tooltip" data-task-id="${escapeHtml(task.id)}" data-action="delete" data-tip="Delete task">
+        <button class="absolute top-2 right-2 btn btn-ghost btn-xs text-base-content/60 hover:text-error hover:bg-error/10 tooltip" data-task-id="${escapeHtml(task.id)}" data-action="delete" data-tip="Delete">
           ×
         </button>
       </div>
