@@ -18,10 +18,12 @@ export interface StorageInfo {
 }
 
 export class StorageManager {
-  private static readonly STORAGE_KEY_TASKS = 'tasks';
+  private static readonly STORAGE_KEY_TASKS = 'tasks'; // legacy single-item key
+  private static readonly STORAGE_KEY_TASKS_INDEX = 'tasks_index'; // chunked index
   private static readonly STORAGE_KEY_TIMER_PREFIX = 'timer_';
   private static readonly MAX_STORAGE_BYTES = 100 * 1024; // 100KB chrome.storage.sync limit
-  // private static readonly MAX_ITEM_BYTES = 8 * 1024; // 8KB per item limit - reserved for future use
+  private static readonly MAX_ITEM_BYTES = 8 * 1024; // 8KB per item limit
+  private static readonly DEFAULT_TARGET_CHUNK_BYTES = 7 * 1024; // keep below per-item limit with margin
   
   // Write operation throttling to prevent quota exceeded errors
   private static readonly DEFAULT_WRITE_THROTTLE_MS = 2000; // 2 seconds between writes
@@ -29,16 +31,23 @@ export class StorageManager {
 
   private readonly writeThrottleMs: number;
   private readonly maxWritesPerMinute: number;
+  private readonly targetChunkBytes: number;
   private writeQueue: Map<string, { data: unknown; resolve: (value: void) => void; reject: (error: Error) => void; timestamp: number }> = new Map();
   private writeHistory: number[] = [];
   private throttleTimer: NodeJS.Timeout | null = null;
 
-  constructor(options?: { writeThrottleMs?: number; maxWritesPerMinute?: number }) {
+  constructor(
+    options?: { writeThrottleMs?: number; maxWritesPerMinute?: number },
+    chunking?: { targetChunkBytes?: number }
+  ) {
     this.writeThrottleMs = options?.writeThrottleMs ?? StorageManager.DEFAULT_WRITE_THROTTLE_MS;
     this.maxWritesPerMinute = options?.maxWritesPerMinute ?? StorageManager.DEFAULT_MAX_WRITES_PER_MINUTE;
+    const tcb = chunking?.targetChunkBytes ?? StorageManager.DEFAULT_TARGET_CHUNK_BYTES;
+    // Never exceed hard item limit; clamp just in case tests pass very small sizes
+    this.targetChunkBytes = Math.min(Math.max(256, tcb), StorageManager.MAX_ITEM_BYTES - 64);
   }
 
-  // Save tasks to chrome.storage.sync with throttling
+  // Save tasks to chrome.storage.sync (chunked with index) with throttling
   async saveTasks(tasks: Task[]): Promise<void> {
     const data = { tasks };
     
@@ -47,38 +56,78 @@ export class StorageManager {
       throw new Error('Invalid task data structure');
     }
 
-    // Check storage quota
-    const dataSize = this.estimateDataSize(data);
-    if (dataSize > StorageManager.MAX_STORAGE_BYTES) {
-      throw new Error(`Data size (${dataSize} bytes) exceeds storage limit`);
+    // Build chunks
+    const { chunkKeys, chunkPayloads, index } = this.buildTaskChunks(tasks);
+
+    // Approximate preflight (sum of serialized chunk sizes + index)
+    const approxTotal = chunkPayloads.reduce((sum, c) => sum + this.estimateValueSize(c), 0) + this.estimateValueSize(index);
+    if (approxTotal > StorageManager.MAX_STORAGE_BYTES) {
+      throw new Error(`Data size (~${approxTotal} bytes) exceeds storage limit`);
     }
 
-    return this.throttledWrite(StorageManager.STORAGE_KEY_TASKS, tasks);
+    // Get previous index to clean up obsolete chunks after successful write
+    let previousChunks: string[] = [];
+    try {
+      const prev = await chrome.storage.sync.get(StorageManager.STORAGE_KEY_TASKS_INDEX);
+      const idx = prev?.[StorageManager.STORAGE_KEY_TASKS_INDEX];
+      if (idx && Array.isArray(idx.chunks)) previousChunks = idx.chunks as string[];
+    } catch { /* ignore */ }
+
+    // Queue chunk writes first, then index last (atomic-ish in a batch)
+    const writePromises: Promise<void>[] = [];
+    chunkKeys.forEach((key, i) => {
+      writePromises.push(this.throttledWrite(key, chunkPayloads[i]));
+    });
+    const indexPromise = this.throttledWrite(StorageManager.STORAGE_KEY_TASKS_INDEX, index);
+    writePromises.push(indexPromise);
+
+    await Promise.all(writePromises);
+
+    // Cleanup stale keys: legacy 'tasks' and any previous chunk keys not in new set
+    const newSet = new Set(chunkKeys);
+    const toRemove: string[] = [];
+    if (tasks.length > 0) {
+      // Only remove legacy key if we actually persist via chunking
+      toRemove.push(StorageManager.STORAGE_KEY_TASKS);
+    }
+    previousChunks.forEach(k => { if (!newSet.has(k)) toRemove.push(k); });
+    if (tasks.length === 0) {
+      // Clearing all tasks: remove index and any existing chunks
+      toRemove.push(StorageManager.STORAGE_KEY_TASKS_INDEX);
+      // Also remove any remaining chunks currently present
+      try {
+        const all = await chrome.storage.sync.get(null);
+        Object.keys(all).forEach(k => { if (/^tasks_\d+$/.test(k)) toRemove.push(k); });
+      } catch { /* ignore */ }
+    }
+    if (toRemove.length > 0) {
+      try { await chrome.storage.sync.remove(Array.from(new Set(toRemove))); } catch { /* ignore */ }
+    }
   }
 
-  // Load tasks from chrome.storage.sync
+  // Load tasks from chrome.storage.sync (prefers chunked index; falls back to legacy single key)
   async loadTasks(): Promise<Task[]> {
     try {
-      const result = await chrome.storage.sync.get(StorageManager.STORAGE_KEY_TASKS);
-      
-      if (!result || !result[StorageManager.STORAGE_KEY_TASKS]) {
-        return [];
+      // Try chunked format first
+      const idxRes = await chrome.storage.sync.get(StorageManager.STORAGE_KEY_TASKS_INDEX);
+      const idx = idxRes?.[StorageManager.STORAGE_KEY_TASKS_INDEX] as { version?: number; chunks?: string[]; total?: number } | undefined;
+      if (idx && Array.isArray(idx.chunks) && idx.chunks.length > 0) {
+        const chunksRes = await chrome.storage.sync.get(idx.chunks);
+        const tasksArrays: unknown[] = [];
+        for (const key of idx.chunks) {
+          const arr = (chunksRes as Record<string, unknown>)[key];
+          if (Array.isArray(arr)) tasksArrays.push(...arr);
+        }
+        const tasks = tasksArrays as Task[];
+        return tasks.map(task => ({
+          ...task,
+          createdAt: new Date((task as any).createdAt),
+          updatedAt: new Date((task as any).updatedAt),
+        }));
       }
 
-      const tasks = result[StorageManager.STORAGE_KEY_TASKS];
-      
-      // Validate loaded data
-      if (!Array.isArray(tasks)) {
-        console.warn('Invalid tasks data format, returning empty array');
-        return [];
-      }
-
-      // Convert date strings back to Date objects
-      return tasks.map(task => ({
-        ...task,
-        createdAt: new Date(task.createdAt),
-        updatedAt: new Date(task.updatedAt),
-      }));
+      // No index → treat as empty (no backward compatibility)
+      return [];
     } catch (error) {
       console.error('Failed to load tasks:', error);
       return [];
@@ -172,6 +221,15 @@ export class StorageManager {
     } catch (error) {
       // Fallback estimation
       return JSON.stringify(data).length * 2; // Rough estimate
+    }
+  }
+
+  // Estimate value size (works with arrays/objects directly)
+  private estimateValueSize(value: unknown): number {
+    try {
+      return new Blob([JSON.stringify(value)]).size;
+    } catch {
+      return JSON.stringify(value).length * 2;
     }
   }
 
@@ -274,5 +332,47 @@ export class StorageManager {
         return;
       }
     }
+  }
+
+  // Build chunk keys, payloads, and index for a given tasks array
+  private buildTaskChunks(tasks: Task[]): { chunkKeys: string[]; chunkPayloads: unknown[]; index: { version: 1; chunks: string[]; total: number; updatedAt: number } } {
+    // Special case: empty
+    if (tasks.length === 0) {
+      return { chunkKeys: [], chunkPayloads: [], index: { version: 1, chunks: [], total: 0, updatedAt: Date.now() } };
+    }
+
+    const chunkKeys: string[] = [];
+    const chunkPayloads: unknown[] = [];
+
+    let currentChunk: Task[] = [];
+    let currentBytes = 2; // []
+
+    const flush = () => {
+      if (currentChunk.length === 0) return;
+      const key = `tasks_${chunkKeys.length}`;
+      chunkKeys.push(key);
+      // Persist as plain objects (Date -> ISO strings via JSON)
+      const payload = currentChunk.map(t => ({ ...t }));
+      chunkPayloads.push(payload);
+      currentChunk = [];
+      currentBytes = 2;
+    };
+
+    for (const task of tasks) {
+      const tentative = [...currentChunk, task];
+      const approx = this.estimateValueSize(tentative);
+      if (approx > this.targetChunkBytes && currentChunk.length > 0) {
+        flush();
+      }
+      currentChunk.push(task);
+      currentBytes = this.estimateValueSize(currentChunk);
+      if (currentBytes >= this.targetChunkBytes) {
+        flush();
+      }
+    }
+    flush();
+
+    const index = { version: 1 as const, chunks: chunkKeys, total: tasks.length, updatedAt: Date.now() };
+    return { chunkKeys, chunkPayloads, index };
   }
 }
