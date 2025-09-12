@@ -61,6 +61,14 @@ const { title = 'PetaTas' } = Astro.props;
                     </button>
                   </li>
                   <li>
+                    <button id="settings-button" data-testid="settings-button">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4">
+                        <path d="M19.14 12.94a7.49 7.49 0 000-1.88l2.03-1.58a.5.5 0 00.12-.65l-1.92-3.32a.5.5 0 00-.6-.22l-2.39.96a7.45 7.45 0 00-1.63-.95l-.36-2.54a.5.5 0 00-.5-.42h-3.84a.5.5 0 00-.5.42l-.36 2.54c-.58.23-1.12.54-1.63.95l-2.39-.96a.5.5 0 00-.6.22L2.7 8.83a.5.5 0 00.12.65l2.03 1.58c-.05.31-.08.63-.08.94s.03.63.08.94L2.82 14.5a.5.5 0 00-.12.65l1.92 3.32a.5.5 0 00.6.22l2.39-.96c.51.4 1.05.72 1.63.95l.36 2.54a.5.5 0 00.5.42h3.84a.5.5 0 00.5-.42l.36-2.54c.58-.23 1.12-.54 1.63-.95l2.39.96a.5.5 0 00.6-.22l1.92-3.32a.5.5 0 00-.12-.65l-2.03-1.58zM12 15.5A3.5 3.5 0 1115.5 12 3.5 3.5 0 0112 15.5z"/>
+                      </svg>
+                      <span>Settings</span>
+                    </button>
+                  </li>
+                  <li>
                     <button id="clear-all-button" data-testid="clear-all-button" class="tooltip" data-tip="Clear all tasks">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4">
                         <path d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 7h2v8h-2v-8zm4 0h2v8h-2v-8z"/>
@@ -113,6 +121,27 @@ const { title = 'PetaTas' } = Astro.props;
         </form>
       </div>
       <label class="modal-backdrop" for="add-task-modal"></label>
+    </div>
+
+    <!-- Settings Modal -->
+    <input type="checkbox" id="settings-modal" class="modal-toggle" />
+    <div class="modal">
+      <div class="modal-box bg-base-200">
+        <h3 class="font-bold text-lg mb-2">Settings</h3>
+        <form id="settings-form" class="space-y-4">
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text">Treat these headers as Title (comma-separated)</span>
+            </label>
+            <textarea id="title-aliases-input" class="textarea textarea-bordered w-full" rows="3" placeholder="e.g., Subject, Story, Ticket"></textarea>
+          </div>
+          <div class="modal-action">
+            <label for="settings-modal" class="btn btn-ghost">Cancel</label>
+            <button id="settings-save-button" type="submit" class="btn btn-primary">Save</button>
+          </div>
+        </form>
+      </div>
+      <label class="modal-backdrop" for="settings-modal"></label>
     </div>
 
 
