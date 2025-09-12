@@ -60,7 +60,7 @@ export class StorageManager {
     const { chunkKeys, chunkPayloads, index } = this.buildTaskChunks(tasks);
 
     // Approximate preflight (sum of serialized chunk sizes + index)
-    const approxTotal = chunkPayloads.reduce((sum, c) => sum + this.estimateValueSize(c), 0) + this.estimateValueSize(index);
+    const approxTotal = chunkPayloads.reduce<number>((sum, c) => sum + this.estimateValueSize(c), 0) + this.estimateValueSize(index);
     if (approxTotal > StorageManager.MAX_STORAGE_BYTES) {
       throw new Error(`Data size (~${approxTotal} bytes) exceeds storage limit`);
     }
@@ -110,7 +110,8 @@ export class StorageManager {
     try {
       // Try chunked format first
       const idxRes = await chrome.storage.sync.get(StorageManager.STORAGE_KEY_TASKS_INDEX);
-      const idx = idxRes?.[StorageManager.STORAGE_KEY_TASKS_INDEX] as { version?: number; chunks?: string[]; total?: number } | undefined;
+      type TasksIndex = { version?: number; chunks?: string[]; total?: number } | undefined;
+      const idx = idxRes?.[StorageManager.STORAGE_KEY_TASKS_INDEX] as TasksIndex;
       if (idx && Array.isArray(idx.chunks) && idx.chunks.length > 0) {
         const chunksRes = await chrome.storage.sync.get(idx.chunks);
         const tasksArrays: unknown[] = [];
@@ -118,11 +119,12 @@ export class StorageManager {
           const arr = (chunksRes as Record<string, unknown>)[key];
           if (Array.isArray(arr)) tasksArrays.push(...arr);
         }
-        const tasks = tasksArrays as Task[];
-        return tasks.map(task => ({
+        type StoredTask = Omit<Task, 'createdAt' | 'updatedAt'> & { createdAt: string; updatedAt: string };
+        const tasks = tasksArrays as unknown as StoredTask[];
+        return tasks.map((task) => ({
           ...task,
-          createdAt: new Date((task as any).createdAt),
-          updatedAt: new Date((task as any).updatedAt),
+          createdAt: new Date(task.createdAt),
+          updatedAt: new Date(task.updatedAt),
         }));
       }
 
@@ -211,16 +213,6 @@ export class StorageManager {
         bytesAvailable: StorageManager.MAX_STORAGE_BYTES,
         percentUsed: 0,
       };
-    }
-  }
-
-  // Estimate data size (approximate)
-  private estimateDataSize(data: Record<string, unknown>): number {
-    try {
-      return new Blob([JSON.stringify(data)]).size;
-    } catch (error) {
-      // Fallback estimation
-      return JSON.stringify(data).length * 2; // Rough estimate
     }
   }
 
@@ -335,14 +327,14 @@ export class StorageManager {
   }
 
   // Build chunk keys, payloads, and index for a given tasks array
-  private buildTaskChunks(tasks: Task[]): { chunkKeys: string[]; chunkPayloads: unknown[]; index: { version: 1; chunks: string[]; total: number; updatedAt: number } } {
+  private buildTaskChunks(tasks: Task[]): { chunkKeys: string[]; chunkPayloads: Task[][]; index: { version: 1; chunks: string[]; total: number; updatedAt: number } } {
     // Special case: empty
     if (tasks.length === 0) {
       return { chunkKeys: [], chunkPayloads: [], index: { version: 1, chunks: [], total: 0, updatedAt: Date.now() } };
     }
 
     const chunkKeys: string[] = [];
-    const chunkPayloads: unknown[] = [];
+    const chunkPayloads: Task[][] = [];
 
     let currentChunk: Task[] = [];
     let currentBytes = 2; // []
