@@ -1,5 +1,8 @@
 // Timer Manager for PetaTas Chrome Extension
 // Handles per-task timers with persistence across service-worker restarts
+// Note: The current side panel UI uses `TimerUI` for in-panel timers.
+// This module is kept for potential future enhancement where timers persist
+// outside the panel (e.g., managed by the service worker). Not wired by panel-client.
 
 import { StorageManager } from './storage-manager';
 import type { TimerState } from './storage-manager';

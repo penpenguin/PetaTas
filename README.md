@@ -43,6 +43,15 @@ Copy this sample table and paste it into the extension:
 - **Export**: Copy tasks back to clipboard as Markdown
 - **Side Panel**: Native Chrome side panel integration
 
+### 4.1 Status & Timer Behavior
+
+- Start sets the task status to `in-progress`.
+- Stop returns the status to `todo` unless the task is already `done`.
+  - In other words, Stop implies `todo`.
+  - If the task is `done` and you press Stop, the status stays `done` (the timer stops).
+- Marking a task as `done` via the checkbox stops any running timer.
+- Unchecking `done` switches the task back to `todo`; you can Start again as needed.
+
 ### 5. File Structure
 
 ```
@@ -68,6 +77,16 @@ The extension is built using:
 - **TypeScript**: Type safety
 - **Chrome Extension Manifest V3**: Modern extension platform
 - **Vitest**: 171 passing tests with TDD approach
+
+### 6.1 Security (CSP)
+
+- Extension pages use CSP with `style-src 'self' blob:` and do not include `'unsafe-inline'`.
+- Astro is configured with `inlineStylesheets: 'never'`; styles are emitted as external CSS.
+
+### 6.2 Permissions
+
+- To support reliable paste/copy, the manifest explicitly requests `clipboardRead` and `clipboardWrite`.
+- If organization policies restrict the clipboard, users may need to allow clipboard access in browser settings.
 
 ### 7. Troubleshooting
 
