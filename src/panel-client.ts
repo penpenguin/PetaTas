@@ -423,6 +423,9 @@ class PetaTasClient {
       this.timerUI.clearAll()
       this.currentTasks = tasks
       this.renderTasks()
+      // UX: show success immediately and close menu after rendering; persistence follows
+      showToast(`Imported ${tasks.length} tasks from clipboard.`, 'success')
+      this.closeActionsMenu()
       await this.saveTasks()
     } catch (e) {
       handleClipboardError(e, { module: 'PetaTasClient', operation: 'handlePasteClick' }, 'read')

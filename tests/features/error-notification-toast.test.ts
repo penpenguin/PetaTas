@@ -22,7 +22,16 @@ describe('Error notifications render toasts', () => {
     // @ts-expect-error test env
     global.document = dom.window.document as any
 
-    const mockChrome = { storage: { sync: { get: vi.fn().mockResolvedValue({ tasks: [] }), set: vi.fn().mockResolvedValue(undefined) } } }
+    const mockChrome = { storage: { sync: { get: vi.fn().mockImplementation(async (keys: any) => {
+      const index = { version: 1, chunks: ['tasks_0'], total: 0, updatedAt: 0 }
+      if (keys === 'tasks_index') return { tasks_index: index }
+      if (Array.isArray(keys)) {
+        const out: Record<string, unknown> = {}
+        for (const k of keys) if (k === 'tasks_0') out[k] = []
+        return out
+      }
+      return {}
+    }), set: vi.fn().mockResolvedValue(undefined) } } }
     // @ts-expect-error test env
     global.chrome = mockChrome
 
@@ -50,4 +59,3 @@ describe('Error notifications render toasts', () => {
     expect(toast?.textContent).toContain('Oops!')
   })
 })
-

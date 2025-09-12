@@ -62,7 +62,16 @@ describe('Export shows toast and closes menu', () => {
   })
 
   it('success: shows success toast and closes dropdown', async () => {
-    mockChrome.storage.sync.get.mockResolvedValue({ tasks: [task] })
+    mockChrome.storage.sync.get.mockImplementation(async (keys: any) => {
+      const index = { version: 1, chunks: ['tasks_0'], total: 1, updatedAt: 0 }
+      if (keys === 'tasks_index') return { tasks_index: index }
+      if (Array.isArray(keys)) {
+        const out: Record<string, unknown> = {}
+        for (const k of keys) if (k === 'tasks_0') out[k] = [task]
+        return out
+      }
+      return {}
+    })
     mockChrome.storage.sync.set.mockResolvedValue(undefined)
     ;(navigator.clipboard.writeText as any) = vi.fn().mockResolvedValue(undefined)
 
@@ -89,7 +98,16 @@ describe('Export shows toast and closes menu', () => {
   })
 
   it('failure: shows error toast and closes dropdown', async () => {
-    mockChrome.storage.sync.get.mockResolvedValue({ tasks: [task] })
+    mockChrome.storage.sync.get.mockImplementation(async (keys: any) => {
+      const index = { version: 1, chunks: ['tasks_0'], total: 1, updatedAt: 0 }
+      if (keys === 'tasks_index') return { tasks_index: index }
+      if (Array.isArray(keys)) {
+        const out: Record<string, unknown> = {}
+        for (const k of keys) if (k === 'tasks_0') out[k] = [task]
+        return out
+      }
+      return {}
+    })
     mockChrome.storage.sync.set.mockResolvedValue(undefined)
     ;(navigator.clipboard.writeText as any) = vi.fn().mockRejectedValue(new Error('boom'))
 
@@ -112,4 +130,3 @@ describe('Export shows toast and closes menu', () => {
     expect(dropdown.className).not.toMatch(/\bdropdown-open\b/)
   })
 })
-

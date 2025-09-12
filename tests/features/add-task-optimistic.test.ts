@@ -62,11 +62,19 @@ describe('Add Task UX (optimistic + dynamic fields)', () => {
 
   it('always shows a name field (but not system fields) even when existing tasks have empty names', async () => {
     // Existing tasks with empty names
-    mockChrome.storage.sync.get.mockResolvedValue({
-      tasks: [
+    mockChrome.storage.sync.get.mockImplementation(async (keys: any) => {
+      const tasks = [
         { id: 't1', name: '', status: 'todo', notes: '', elapsedMs: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), additionalColumns: { priority: 'High' } },
         { id: 't2', name: '', status: 'done', notes: '', elapsedMs: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), additionalColumns: { assignee: 'Alex' } }
       ]
+      const index = { version: 1, chunks: ['tasks_0'], total: tasks.length, updatedAt: 0 }
+      if (keys === 'tasks_index') return { tasks_index: index }
+      if (Array.isArray(keys)) {
+        const out: Record<string, unknown> = {}
+        for (const k of keys) if (k === 'tasks_0') out[k] = tasks
+        return out
+      }
+      return {}
     });
     mockChrome.storage.sync.set.mockResolvedValue(undefined);
 
@@ -93,7 +101,16 @@ describe('Add Task UX (optimistic + dynamic fields)', () => {
 
   it('renders the new task optimistically before storage save resolves', async () => {
     // No existing tasks
-    mockChrome.storage.sync.get.mockResolvedValue({ tasks: [] });
+    mockChrome.storage.sync.get.mockImplementation(async (keys: any) => {
+      const index = { version: 1, chunks: ['tasks_0'], total: 0, updatedAt: 0 }
+      if (keys === 'tasks_index') return { tasks_index: index }
+      if (Array.isArray(keys)) {
+        const out: Record<string, unknown> = {}
+        for (const k of keys) if (k === 'tasks_0') out[k] = []
+        return out
+      }
+      return {}
+    });
 
     // Create a controllable promise for set
     let resolveSet: (() => void) | null = null;
@@ -140,7 +157,16 @@ describe('Add Task UX (optimistic + dynamic fields)', () => {
   });
 
   it('ignores injected system fields even if they appear in the DOM', async () => {
-    mockChrome.storage.sync.get.mockResolvedValue({ tasks: [] });
+    mockChrome.storage.sync.get.mockImplementation(async (keys: any) => {
+      const index = { version: 1, chunks: ['tasks_0'], total: 0, updatedAt: 0 }
+      if (keys === 'tasks_index') return { tasks_index: index }
+      if (Array.isArray(keys)) {
+        const out: Record<string, unknown> = {}
+        for (const k of keys) if (k === 'tasks_0') out[k] = []
+        return out
+      }
+      return {}
+    });
     mockChrome.storage.sync.set.mockResolvedValue(undefined);
 
     vi.resetModules();
@@ -175,10 +201,18 @@ describe('Add Task UX (optimistic + dynamic fields)', () => {
 
   it('persists dynamic column values with special characters in field names', async () => {
     // Existing tasks define dynamic columns with special characters
-    mockChrome.storage.sync.get.mockResolvedValue({
-      tasks: [
+    mockChrome.storage.sync.get.mockImplementation(async (keys: any) => {
+      const tasks = [
         { id: 't1', name: 'T1', status: 'todo', notes: '', elapsedMs: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), additionalColumns: { 'Priority (P0)': 'P0', 'Owner/Team': 'Core' } }
       ]
+      const index = { version: 1, chunks: ['tasks_0'], total: tasks.length, updatedAt: 0 }
+      if (keys === 'tasks_index') return { tasks_index: index }
+      if (Array.isArray(keys)) {
+        const out: Record<string, unknown> = {}
+        for (const k of keys) if (k === 'tasks_0') out[k] = tasks
+        return out
+      }
+      return {}
     });
     mockChrome.storage.sync.set.mockResolvedValue(undefined);
 
@@ -213,10 +247,18 @@ describe('Add Task UX (optimistic + dynamic fields)', () => {
   });
 
   it('persists dynamic column values with Japanese header names', async () => {
-    mockChrome.storage.sync.get.mockResolvedValue({
-      tasks: [
+    mockChrome.storage.sync.get.mockImplementation(async (keys: any) => {
+      const tasks = [
         { id: 't1', name: 'T1', status: 'todo', notes: '', elapsedMs: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), additionalColumns: { '見積(分)': '10' } }
       ]
+      const index = { version: 1, chunks: ['tasks_0'], total: tasks.length, updatedAt: 0 }
+      if (keys === 'tasks_index') return { tasks_index: index }
+      if (Array.isArray(keys)) {
+        const out: Record<string, unknown> = {}
+        for (const k of keys) if (k === 'tasks_0') out[k] = tasks
+        return out
+      }
+      return {}
     });
     mockChrome.storage.sync.set.mockResolvedValue(undefined);
 
@@ -245,7 +287,16 @@ describe('Add Task UX (optimistic + dynamic fields)', () => {
 
   it('rolls back UI and keeps modal values if storage save fails', async () => {
     vi.useFakeTimers();
-    mockChrome.storage.sync.get.mockResolvedValue({ tasks: [] });
+    mockChrome.storage.sync.get.mockImplementation(async (keys: any) => {
+      const index = { version: 1, chunks: ['tasks_0'], total: 0, updatedAt: 0 }
+      if (keys === 'tasks_index') return { tasks_index: index }
+      if (Array.isArray(keys)) {
+        const out: Record<string, unknown> = {}
+        for (const k of keys) if (k === 'tasks_0') out[k] = []
+        return out
+      }
+      return {}
+    });
     mockChrome.storage.sync.set.mockRejectedValue(new Error('save failed'));
 
     vi.resetModules();

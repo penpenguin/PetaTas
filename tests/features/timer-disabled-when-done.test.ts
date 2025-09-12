@@ -16,12 +16,22 @@ describe('Timer controls disabled for done tasks', () => {
     // @ts-expect-error test env
     global.document = dom.window.document as any
 
+    const tasks = [
+      { id: 'd1', name: 'Already Done', status: 'done', notes: '', elapsedMs: 60000, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), additionalColumns: {} }
+    ]
     const mockChrome = {
       storage: {
         sync: {
-          get: vi.fn().mockResolvedValue({ tasks: [
-            { id: 'd1', name: 'Already Done', status: 'done', notes: '', elapsedMs: 60000, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), additionalColumns: {} }
-          ] }),
+          get: vi.fn().mockImplementation(async (keys: any) => {
+            const index = { version: 1, chunks: ['tasks_0'], total: tasks.length, updatedAt: 0 }
+            if (keys === 'tasks_index') return { tasks_index: index }
+            if (Array.isArray(keys)) {
+              const out: Record<string, unknown> = {}
+              for (const k of keys) if (k === 'tasks_0') out[k] = tasks
+              return out
+            }
+            return {}
+          }),
           set: vi.fn().mockResolvedValue(undefined)
         }
       }
@@ -53,4 +63,3 @@ describe('Timer controls disabled for done tasks', () => {
     expect(labelAfter).toBe(labelBefore)
   })
 })
-

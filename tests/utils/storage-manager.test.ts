@@ -28,9 +28,11 @@ describe('StorageManager', () => {
 
       await storageManager.saveTasks(tasks);
 
-      expect(chrome.storage.sync.set).toHaveBeenCalledWith({
-        tasks: tasks,
-      });
+      expect(chrome.storage.sync.set).toHaveBeenCalled();
+      const args = chrome.storage.sync.set.mock.calls[chrome.storage.sync.set.mock.calls.length - 1][0];
+      // Chunked format: should include tasks_0 and tasks_index
+      expect(args).toHaveProperty('tasks_index');
+      expect(args).toHaveProperty('tasks_0');
     });
 
     it('should fail: load tasks from storage', async () => {
@@ -47,19 +49,31 @@ describe('StorageManager', () => {
         }
       ];
 
-      chrome.storage.sync.get.mockResolvedValue({
-        tasks: storedTasks,
+      chrome.storage.sync.get.mockImplementation(async (keys: any) => {
+        const index = { version: 1, chunks: ['tasks_0'], total: storedTasks.length, updatedAt: 0 }
+        if (keys === 'tasks_index') return { tasks_index: index }
+        if (Array.isArray(keys)) {
+          const out: Record<string, unknown> = {}
+          for (const k of keys) if (k === 'tasks_0') out[k] = storedTasks
+          return out
+        }
+        return {}
       });
 
       const result = await storageManager.loadTasks();
 
-      expect(chrome.storage.sync.get).toHaveBeenCalledWith('tasks');
-      expect(result).toEqual(storedTasks);
+      expect(chrome.storage.sync.get).toHaveBeenCalledWith('tasks_index');
+      expect(result.map(t => ({...t, createdAt: new Date(t.createdAt), updatedAt: new Date(t.updatedAt)}))).toEqual(
+        storedTasks
+      );
     });
 
     it('should fail: load tasks returns empty array when no data', async () => {
       // TDD Red Phase: This should fail
-      chrome.storage.sync.get.mockResolvedValue({});
+      chrome.storage.sync.get.mockImplementation(async (keys: any) => {
+        if (keys === 'tasks_index') return {}
+        return {}
+      });
 
       const result = await storageManager.loadTasks();
 

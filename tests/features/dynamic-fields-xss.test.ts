@@ -37,7 +37,16 @@ describe('Dynamic fields XSS hardening', () => {
     const mockChrome = {
       storage: {
         sync: {
-          get: vi.fn().mockResolvedValue({ tasks }),
+          get: vi.fn().mockImplementation(async (keys: any) => {
+            const index = { version: 1, chunks: ['tasks_0'], total: tasks.length, updatedAt: 0 }
+            if (keys === 'tasks_index') return { tasks_index: index }
+            if (Array.isArray(keys)) {
+              const out: Record<string, unknown> = {}
+              for (const k of keys) if (k === 'tasks_0') out[k] = tasks
+              return out
+            }
+            return {}
+          }),
           set: vi.fn().mockResolvedValue(undefined),
           remove: vi.fn(),
           clear: vi.fn(),
@@ -90,4 +99,3 @@ describe('Dynamic fields XSS hardening', () => {
     expect(ph).toContain('<img')
   })
 })
-

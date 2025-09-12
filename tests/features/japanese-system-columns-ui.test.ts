@@ -58,14 +58,22 @@ describe('UI hides Japanese system columns (状態/終了)', () => {
 
   it('hides 状態 (system) but allows 終了 (custom) in dynamic fields; and does not display empty values in rows', async () => {
     // Prepare storage with tasks that (incorrectly) include Japanese system columns in additionalColumns
-    mockChrome.storage.sync.get.mockResolvedValue({
-      tasks: [
-        { 
-          id: 't1', name: 'T1', status: 'todo', notes: '', elapsedMs: 0,
-          createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-          additionalColumns: { '状態': 'todo', '終了': '', '見積(分)': '15' }
-        }
-      ]
+    const tasks = [
+      { 
+        id: 't1', name: 'T1', status: 'todo', notes: '', elapsedMs: 0,
+        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+        additionalColumns: { '状態': 'todo', '終了': '', '見積(分)': '15' }
+      }
+    ]
+    mockChrome.storage.sync.get.mockImplementation(async (keys: any) => {
+      const index = { version: 1, chunks: ['tasks_0'], total: tasks.length, updatedAt: 0 }
+      if (keys === 'tasks_index') return { tasks_index: index }
+      if (Array.isArray(keys)) {
+        const out: Record<string, unknown> = {}
+        for (const k of keys) if (k === 'tasks_0') out[k] = tasks
+        return out
+      }
+      return {}
     });
     mockChrome.storage.sync.set.mockResolvedValue(undefined);
 

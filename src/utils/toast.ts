@@ -5,7 +5,10 @@ export function showToast(message: string, type: ToastType = 'success'): void {
   if (!toastContainer) return;
 
   const toast = document.createElement('div');
-  toast.className = `alert alert-${type} shadow-lg`;
+  const base = `alert alert-${type} shadow-lg`;
+  // UX: force success toast to be green regardless of theme palette
+  const successColor = type === 'success' ? ' bg-green-600 text-white' : '';
+  toast.className = base + successColor;
 
   const inner = document.createElement('div');
   const span = document.createElement('span');
