@@ -12,7 +12,7 @@ describe('System theme auto-switch', () => {
     global.document = dom.window.document as any
   })
 
-  it('applies abyss theme when prefers-color-scheme: dark matches', async () => {
+  it('applies abyss theme when prefers-color-scheme: dark matches (no inline style)', async () => {
     const listeners: Array<(e: any) => void> = []
     const mql = {
       matches: true,
@@ -31,12 +31,16 @@ describe('System theme auto-switch', () => {
     initSystemThemeSync()
 
     expect(document.documentElement.getAttribute('data-theme')).toBe('abyss')
-    expect(document.documentElement.style.colorScheme).toBe('dark')
+    // No inline style mutation under strict CSP
+    expect(document.documentElement.style.colorScheme).toBe('')
+    // Attribute-based hint for UA styling
+    expect(document.documentElement.getAttribute('data-color-scheme')).toBe('dark')
 
     // simulate system change back to light
     mql.dispatch(false)
     expect(document.documentElement.getAttribute('data-theme')).toBe('fantasy')
-    expect(document.documentElement.style.colorScheme).toBe('light')
+    expect(document.documentElement.style.colorScheme).toBe('')
+    expect(document.documentElement.getAttribute('data-color-scheme')).toBe('light')
   })
 
   it('keeps default light theme when matchMedia is unavailable', async () => {
@@ -47,7 +51,7 @@ describe('System theme auto-switch', () => {
     expect(document.documentElement.getAttribute('data-theme')).toBe('fantasy')
   })
 
-  it('re-applies theme on window focus/visibility change', async () => {
+  it('re-applies theme on window focus/visibility change (via attributes)', async () => {
     let currentMatches = false
     const listeners: Array<(e?: any) => void> = []
     const mql = {
@@ -74,11 +78,13 @@ describe('System theme auto-switch', () => {
     // @ts-expect-error dispatch focus
     window.dispatchEvent(new window.Event('focus'))
     expect(document.documentElement.getAttribute('data-theme')).toBe('abyss')
+    expect(document.documentElement.getAttribute('data-color-scheme')).toBe('dark')
 
     // Flip back and simulate visibility change
     currentMatches = false
     document.dispatchEvent(new window.Event('visibilitychange'))
     expect(document.documentElement.getAttribute('data-theme')).toBe('fantasy')
+    expect(document.documentElement.getAttribute('data-color-scheme')).toBe('light')
 
     // clean up spies
     addEventListenerSpy.mockRestore()

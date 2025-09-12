@@ -31,4 +31,9 @@ body {
 
 /* Responsive design moved to markup using Tailwind utilities */
 
-/* color-scheme is managed dynamically in src/utils/theme.ts */
+/* color-scheme is managed dynamically in src/utils/theme.ts (no hardcoded color-scheme here) */
+
+/* Utilities to replace inline style attributes */
+.scrollbar-stable {
+  scrollbar-gutter: stable;
+}
