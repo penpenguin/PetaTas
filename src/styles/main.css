@@ -31,14 +31,7 @@ body {
 
 /* Responsive design moved to markup using Tailwind utilities */
 
-/* color-scheme is managed dynamically in src/utils/theme.ts */
-/* Avoid inline styles: use attribute/class hooks */
-:root[data-color-scheme='dark'] {
-  color-scheme: dark;
-}
-:root[data-color-scheme='light'] {
-  color-scheme: light;
-}
+/* color-scheme is managed dynamically in src/utils/theme.ts (no hardcoded color-scheme here) */
 
 /* Utilities to replace inline style attributes */
 .scrollbar-stable {
