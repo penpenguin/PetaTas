@@ -116,6 +116,9 @@ const { title = 'PetaTas' } = Astro.props;
     </div>
 
 
+    
+
+
     <!-- Toast notifications -->
     <div class="toast toast-end" id="toast-container">
       <!-- Toast messages will be dynamically inserted here -->
@@ -123,7 +126,7 @@ const { title = 'PetaTas' } = Astro.props;
 
     <!-- Client-side JavaScript -->
     {import.meta.env.DEV
-      ? (<script type="module" src="/src/panel-client.ts"></script>)
+      ? (<script is:inline type="module" src="/src/panel-client.ts"></script>)
       : (<div set:html={'<script src="/panel-client.js"></script>'}></div>)}
   </body>
 </html>
