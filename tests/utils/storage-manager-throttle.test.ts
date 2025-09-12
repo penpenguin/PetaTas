@@ -6,11 +6,21 @@ describe('StorageManager throttle injection', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     // Minimal chrome mock
+    const tasks: Task[] = []
     const mockChrome = {
       storage: {
         sync: {
           set: vi.fn().mockResolvedValue(undefined),
-          get: vi.fn().mockResolvedValue({ tasks: [] }),
+          get: vi.fn().mockImplementation(async (keys: any) => {
+            const index = { version: 1, chunks: ['tasks_0'], total: tasks.length, updatedAt: 0 }
+            if (keys === 'tasks_index') return { tasks_index: index }
+            if (Array.isArray(keys)) {
+              const out: Record<string, unknown> = {}
+              for (const k of keys) if (k === 'tasks_0') out[k] = tasks
+              return out
+            }
+            return {}
+          }),
           clear: vi.fn(),
           remove: vi.fn(),
           getBytesInUse: vi.fn().mockResolvedValue(0),
@@ -46,4 +56,3 @@ describe('StorageManager throttle injection', () => {
     expect(chrome.storage.sync.set).toHaveBeenCalledTimes(1)
   })
 })
-

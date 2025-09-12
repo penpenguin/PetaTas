@@ -16,12 +16,22 @@ describe('Card inner padding', () => {
     // @ts-expect-error test env
     global.document = dom.window.document as any
 
+    const tasks = [
+      { id: 'x', name: 'X', status: 'todo', notes: '', elapsedMs: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), additionalColumns: {} }
+    ]
     const mockChrome = {
       storage: {
         sync: {
-          get: vi.fn().mockResolvedValue({ tasks: [
-            { id: 'x', name: 'X', status: 'todo', notes: '', elapsedMs: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), additionalColumns: {} }
-          ] }),
+          get: vi.fn().mockImplementation(async (keys: any) => {
+            const index = { version: 1, chunks: ['tasks_0'], total: tasks.length, updatedAt: 0 }
+            if (keys === 'tasks_index') return { tasks_index: index }
+            if (Array.isArray(keys)) {
+              const out: Record<string, unknown> = {}
+              for (const k of keys) if (k === 'tasks_0') out[k] = tasks
+              return out
+            }
+            return {}
+          }),
           set: vi.fn().mockResolvedValue(undefined)
         }
       }
@@ -49,4 +59,3 @@ describe('Card inner padding', () => {
     expect(cls).not.toMatch(/\bp-3\b/) // ensure we no longer use uniform p-3
   })
 })
-

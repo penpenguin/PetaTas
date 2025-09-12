@@ -70,7 +70,16 @@ describe('Settings UI: save title aliases', () => {
     // Existing settings
     mockChrome.storage.local.get.mockResolvedValue({ settings_title_aliases: ['Subject'] });
     mockChrome.storage.local.set.mockResolvedValue(undefined);
-    mockChrome.storage.sync.get.mockResolvedValue({ tasks: [] });
+    mockChrome.storage.sync.get.mockImplementation(async (keys: any) => {
+      const index = { version: 1, chunks: ['tasks_0'], total: 0, updatedAt: 0 }
+      if (keys === 'tasks_index') return { tasks_index: index }
+      if (Array.isArray(keys)) {
+        const out: Record<string, unknown> = {}
+        for (const k of keys) if (k === 'tasks_0') out[k] = []
+        return out
+      }
+      return {}
+    });
 
     vi.resetModules();
     await import('../../src/panel-client.ts');
@@ -101,4 +110,3 @@ describe('Settings UI: save title aliases', () => {
     expect(modal.checked).toBe(false);
   });
 });
-

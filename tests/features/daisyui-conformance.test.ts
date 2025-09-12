@@ -17,21 +17,31 @@ describe('daisyUI conformance in rendered task rows', () => {
     // @ts-expect-error test env
     global.document = dom.window.document as any
 
+    const tasks = [
+      {
+        id: 't1',
+        name: 'A task',
+        status: 'todo',
+        notes: 'Some note',
+        elapsedMs: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        additionalColumns: { Priority: 'High' }
+      }
+    ]
     mockChrome = {
       storage: {
         sync: {
-          get: vi.fn().mockResolvedValue({ tasks: [
-            {
-              id: 't1',
-              name: 'A task',
-              status: 'todo',
-              notes: 'Some note',
-              elapsedMs: 0,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              additionalColumns: { Priority: 'High' }
+          get: vi.fn().mockImplementation(async (keys: any) => {
+            const index = { version: 1, chunks: ['tasks_0'], total: tasks.length, updatedAt: 0 }
+            if (keys === 'tasks_index') return { tasks_index: index }
+            if (Array.isArray(keys)) {
+              const out: Record<string, unknown> = {}
+              for (const k of keys) if (k === 'tasks_0') out[k] = tasks
+              return out
             }
-          ] }),
+            return {}
+          }),
           set: vi.fn().mockResolvedValue(undefined),
           remove: vi.fn(),
           clear: vi.fn(),
