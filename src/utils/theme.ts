@@ -18,12 +18,8 @@ export function initSystemThemeSync(doc: Document = document, win: Window = wind
     if (root.getAttribute('data-theme') !== theme) {
       root.setAttribute('data-theme', theme)
     }
-    // Hint to UA for form controls, scrollbars, etc.
-  try {
-    (root as HTMLElement).style.colorScheme = isDark ? 'dark' : 'light'
-    } catch {
-      // ignore style issues in older environments
-    }
+    // Hint to UA for form controls, scrollbars, etc., without inline styles (strict CSP)
+    root.setAttribute('data-color-scheme', isDark ? 'dark' : 'light')
   }
 
   try {
