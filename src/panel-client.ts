@@ -248,14 +248,22 @@ class PetaTasClient {
   private createDynamicField(container: HTMLElement, fieldName: string): void {
     const formControl = document.createElement('div')
     formControl.className = 'form-control'
-    const label = getFieldLabel(fieldName)
-    const placeholder = getFieldPlaceholder(fieldName)
-    formControl.innerHTML = `
-      <label class="label">
-        <span class="label-text">${label}</span>
-      </label>
-      <input type="text" class="input input-bordered w-full dynamic-field-input" data-field-name="${fieldName}" placeholder="${placeholder}"/>
-    `
+
+    const labelEl = document.createElement('label')
+    labelEl.className = 'label'
+    const labelSpan = document.createElement('span')
+    labelSpan.className = 'label-text'
+    labelSpan.textContent = getFieldLabel(fieldName)
+    labelEl.appendChild(labelSpan)
+
+    const inputEl = document.createElement('input')
+    inputEl.type = 'text'
+    inputEl.className = 'input input-bordered w-full dynamic-field-input'
+    inputEl.setAttribute('data-field-name', fieldName)
+    inputEl.placeholder = getFieldPlaceholder(fieldName)
+
+    formControl.appendChild(labelEl)
+    formControl.appendChild(inputEl)
     container.appendChild(formControl)
   }
 

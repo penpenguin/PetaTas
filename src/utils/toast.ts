@@ -6,11 +6,12 @@ export function showToast(message: string, type: ToastType = 'success'): void {
 
   const toast = document.createElement('div');
   toast.className = `alert alert-${type} shadow-lg`;
-  toast.innerHTML = `
-    <div>
-      <span>${message}</span>
-    </div>
-  `;
+
+  const inner = document.createElement('div');
+  const span = document.createElement('span');
+  span.textContent = message;
+  inner.appendChild(span);
+  toast.appendChild(inner);
 
   toastContainer.appendChild(toast);
 
@@ -20,4 +21,3 @@ export function showToast(message: string, type: ToastType = 'success'): void {
 }
 
 export default showToast;
-
