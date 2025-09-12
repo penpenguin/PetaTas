@@ -7,8 +7,8 @@ describe('Panel scrollbar padding', () => {
     const file = resolve(process.cwd(), 'src/pages/index.astro')
     const content = readFileSync(file, 'utf8')
     // Ensure the vertical scroll container has slightly larger left/right padding (pl-2.5, pr-2.5)
-    expect(content).toMatch(/class=\"[^\"]*overflow-y-auto[^\"]*pl-2\.5/)
-    expect(content).toMatch(/class=\"[^\"]*overflow-y-auto[^\"]*pr-2\.5/)
+    expect(content).toMatch(/class=\"[^\"]*overflow-y-scroll[^\"]*pl-2\.5/)
+    expect(content).toMatch(/class=\"[^\"]*overflow-y-scroll[^\"]*pr-2\.5/)
     // Ensure the main content container does NOT have horizontal padding (px-4 removed), but keeps py-0
     expect(content).toMatch(/class=\"[^\"]*mx-auto[^\"]*py-0/)
     expect(content).not.toMatch(/class=\"[^\"]*mx-auto[^\"]*px-4/)
