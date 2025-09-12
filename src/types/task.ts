@@ -64,7 +64,12 @@ export function isValidTask(obj: unknown): obj is Task {
 // Note: System/extension-managed columns are identified via isSystemHeader()
 
 // Create a new task from markdown table row
-export function createTask(headers: string[], row: string[], ignoreExtensionColumns: boolean = false): Task {
+export function createTask(
+  headers: string[], 
+  row: string[], 
+  ignoreExtensionColumns: boolean = false,
+  customNameAliases?: string[],
+): Task {
   const now = new Date();
   const task: Task = {
     id: generateTaskId(),
@@ -77,6 +82,9 @@ export function createTask(headers: string[], row: string[], ignoreExtensionColu
     additionalColumns: {}
   };
 
+  // Build custom alias set (normalized)
+  const customAliasSet = new Set<string>((customNameAliases || []).map((s) => s.toLowerCase().trim()))
+
   // Map headers to task properties
   headers.forEach((header, index) => {
     const value = row[index] || '';
@@ -86,14 +94,25 @@ export function createTask(headers: string[], row: string[], ignoreExtensionColu
     if (ignoreExtensionColumns && isSystemHeader(header)) {
       return;
     }
+
+    // User-configured aliases for title/name take precedence
+    if (customAliasSet.has(normalizedHeader)) {
+      task.name = value;
+      return;
+    }
     
     switch (normalizedHeader) {
+      // Title/name aliases (English + Japanese)
       case 'name':
       case 'task':
       case 'title':
+      case 'taskname':
+      case 'task name':
       case '名前':
       case '題名':
       case '件名':
+      case 'タスク名':
+      case 'タスク':
         task.name = value;
         break;
       case 'status':

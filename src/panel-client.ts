@@ -16,6 +16,7 @@ import generateMarkdownTable from './utils/markdown-exporter.js'
 import { getFieldLabel, getFieldPlaceholder } from '@/utils/form-field-utils'
 import { captureDynamicFieldState, restoreDynamicFieldState } from '@/utils/form-state-utils'
 import showToast from '@/utils/toast'
+import { loadNormalizedTitleAliases, loadTitleAliases, parseCsvAliases, saveTitleAliases } from '@/utils/settings-manager'
 
 // Inline SVGs for timer button
 const PLAY_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>'
@@ -77,6 +78,10 @@ class PetaTasClient {
     q('export-button')?.addEventListener('click', () => { void this.handleExportClick() })
     q('add-task-button')?.addEventListener('click', () => this.handleAddTaskClick())
     q('clear-all-button')?.addEventListener('click', () => this.handleClearAllClick())
+    q('settings-button')?.addEventListener('click', () => { void this.handleSettingsClick() })
+
+    const settingsForm = q('settings-form') as HTMLFormElement | null
+    settingsForm?.addEventListener('submit', (e) => { void this.handleSettingsSubmit(e) })
 
     const addTaskForm = q('add-task-form') as HTMLFormElement | null
     addTaskForm?.addEventListener('submit', (e) => { void this.handleAddTaskSubmit(e) })
@@ -404,13 +409,47 @@ class PetaTasClient {
           : true
         if (!ok) return
       }
-      const tasks = parsed.rows.map(row => createTask(parsed.headers, row, true))
+      const aliasSet = await loadNormalizedTitleAliases()
+      const customAliases = Array.from(aliasSet)
+      const tasks = parsed.rows.map(row => createTask(parsed.headers, row, true, customAliases))
       this.timerUI.clearAll()
       this.currentTasks = tasks
       this.renderTasks()
       await this.saveTasks()
     } catch (e) {
       handleClipboardError(e, { module: 'PetaTasClient', operation: 'handlePasteClick' }, 'read')
+    }
+  }
+
+  // ----- Settings (title aliases) -----
+  private async handleSettingsClick(): Promise<void> {
+    try {
+      const existing = await loadTitleAliases()
+      const modal = document.getElementById('settings-modal') as HTMLInputElement | null
+      const textarea = document.getElementById('title-aliases-input') as HTMLTextAreaElement | null
+      if (textarea) textarea.value = existing.join(', ')
+      if (modal) {
+        modal.checked = true
+        setTimeout(() => textarea?.focus(), 0)
+      }
+    } catch (e) {
+      handleGeneralError(e, 'medium', { module: 'PetaTasClient', operation: 'openSettings' })
+    }
+  }
+
+  private async handleSettingsSubmit(event: Event): Promise<void> {
+    event.preventDefault()
+    try {
+      const textarea = document.getElementById('title-aliases-input') as HTMLTextAreaElement | null
+      const modal = document.getElementById('settings-modal') as HTMLInputElement | null
+      const raw = textarea?.value || ''
+      const aliases = parseCsvAliases(raw)
+      await saveTitleAliases(aliases)
+      showToast('Settings saved.', 'success')
+      if (modal) modal.checked = false
+    } catch (e) {
+      handleGeneralError(e, 'high', { module: 'PetaTasClient', operation: 'saveSettings' })
+      showToast('Failed to save settings.', 'error')
     }
   }
 
