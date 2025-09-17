@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { JSDOM } from 'jsdom'
 
 // Minimal Task shape used by storage mock
@@ -88,6 +88,11 @@ describe('Export shows toast and closes menu', () => {
 
     // Allow async export
     await new Promise(r => setTimeout(r, 10))
+
+    const markdown = (navigator.clipboard.writeText as unknown as Mock).mock.calls[0][0] as string
+
+    expect(markdown).toContain('| Task | Status | Notes | Timer | Priority |')
+    expect(markdown).toContain('| A | todo |  | 00:00:00 | High |')
 
     // Success toast appears
     const toast = document.querySelector('#toast-container .alert.alert-success') as HTMLElement | null
