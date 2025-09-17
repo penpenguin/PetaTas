@@ -1,4 +1,6 @@
 # PetaTas Chrome Extension
+[![Test](https://github.com/penpenguin/PetaTas/actions/workflows/test.yml/badge.svg)](https://github.com/penpenguin/PetaTas/actions/workflows/test.yml)
+[![codecov](https://codecov.io/github/penpenguin/PetaTas/graph/badge.svg?token=N2IBYQEU2O)](https://codecov.io/github/penpenguin/PetaTas)
 
 Markdown table-based task management with timers and side panel functionality.
 
