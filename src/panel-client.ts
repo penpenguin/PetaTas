@@ -468,12 +468,14 @@ class PetaTasClient {
     try {
       if (this.currentTasks.length === 0) return
       if (!navigator.clipboard?.writeText) throw new Error('Clipboard API not available')
+      const baseHeaders = ['Task']
       const extensionHeaders = ['Status', 'Notes', 'Timer']
       const custom = new Set<string>()
       this.currentTasks.forEach(t => Object.keys(t.additionalColumns || {}).forEach(h => custom.add(h)))
-      const headers = [...extensionHeaders, ...Array.from(custom)]
+      const headers = [...baseHeaders, ...extensionHeaders, ...Array.from(custom)]
       const rows = this.currentTasks.map((t) => headers.map((h) => {
         switch (h) {
+          case 'Task': return t.name
           case 'Status': return t.status
           case 'Notes': return t.notes
           case 'Timer': return this.formatTime(t.elapsedMs)
