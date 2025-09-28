@@ -9,6 +9,7 @@
     "preview": "astro preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:report": "vitest run --coverage",
     "lint": "eslint src/**/*.{ts,astro}",
     "typecheck": "astro check"
   },

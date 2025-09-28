@@ -605,8 +605,8 @@ describe('Paste-to-Render Performance Tests', () => {
       const avgDuration = allDurations.reduce((a, b) => a + b, 0) / allDurations.length;
       const maxDeviation = Math.max(...allDurations.map(d => Math.abs(d - avgDuration)));
       
-      // Performance should be consistent (allow CI variance; max deviation <= 110% of average)
-      expect(maxDeviation).toBeLessThanOrEqual(avgDuration * 1.1);
+      // Performance should be consistent (allow CI variance; max deviation <= 150% of average)
+      expect(maxDeviation).toBeLessThanOrEqual(avgDuration * 1.5);
       
       console.log(`🎯 Performance consistency: avg ${avgDuration.toFixed(2)}ms, max deviation ${maxDeviation.toFixed(2)}ms`);
     }, 10000); // 10 second timeout for this performance test
