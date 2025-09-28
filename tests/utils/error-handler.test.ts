@@ -54,6 +54,22 @@ describe('ErrorHandler', () => {
     });
   });
 
+    it('should dispatch error-notification events with provided user message', () => {
+      const context = { module: 'ui', operation: 'showToast' };
+      const listener = vi.fn<(event: Event) => void>();
+      document.addEventListener('error-notification', listener);
+
+      errorHandler.handleError(new Error('Notify'), 'high', context, 'Display this');
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      const evt = listener.mock.calls[0][0] as CustomEvent<{ message?: string; severity?: string; timestamp: number }>;
+      expect(evt.detail.message).toBe('Display this');
+      expect(evt.detail.severity).toBe('high');
+      expect(evt.detail.timestamp).toBeInstanceOf(Date);
+
+      document.removeEventListener('error-notification', listener);
+    });
+
   describe('handleStorageError', () => {
     it('should handle throttling errors with low severity', () => {
       const context = { module: 'storage', operation: 'save' };
