@@ -25,6 +25,7 @@ pnpm-debug.log*
 
 # test coverage
 coverage/
+reports/
 test-results/
 playwriht-report/
 
