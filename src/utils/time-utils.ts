@@ -7,7 +7,7 @@ export function parseTimerToMs(input: string): number {
   const s = input.trim();
 
   // Token format: 1h 2m 3s
-  const tokenRe = /(?:(\d+)\s*h)?\s*(?:(\d+)\s*m)?\s*(?:(\d+)\s*s)?$/i;
+  const tokenRe = /^(?:(\d+)\s*h)?\s*(?:(\d+)\s*m)?\s*(?:(\d+)\s*s)?$/i;
   const tokenMatch = s.match(tokenRe);
   if (tokenMatch && (tokenMatch[1] || tokenMatch[2] || tokenMatch[3])) {
     const h = parseInt(tokenMatch[1] || '0', 10);
